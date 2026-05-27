@@ -1,0 +1,28 @@
+{
+  "name": "Chinese-WebNovel-Skill 参考源",
+  "sourceRepository": "https://github.com/Tomsawyerhu/Chinese-WebNovel-Skill",
+  "sourceCommit": "4e0332eec0da62bf160eb284944a4c0def40b4c9",
+  "observedAt": "2026-05-26",
+  "licenseStatus": "未在仓库根目录发现 LICENSE 文件",
+  "integrationPolicy": {
+    "imported": [
+      "模块化写作流程",
+      "专项模块职责",
+      "模块路由逻辑",
+      "章节完稿强制审查思想",
+      "素材检索优先、只借结构不借句面的使用原则"
+    ],
+    "notImportedByDefault": [
+      "data/articles 下的小说正文全文",
+      "各类主题短篇 demo PDF/DOCX",
+      "中长篇 demo PDF"
+    ],
+    "reason": "外部仓库未提供明确复用授权，且包含大量可能受版权保护的长文本作品。"
+  },
+  "futureImportPlan": [
+    "增加用户确认授权后的本地语料导入器",
+    "导入时保存来源、授权说明、hash 和 novelId/global 作用域",
+    "生成检索索引时只用于本地私有环境"
+  ]
+}
+

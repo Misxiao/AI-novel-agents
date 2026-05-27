@@ -1,0 +1,88 @@
+{
+  "name": "中文网文专项模块索引",
+  "version": "1.0.0",
+  "defaultFlow": [
+    "先判断任务阶段",
+    "优先调用专项模块",
+    "先匹配素材和结构",
+    "再写计划",
+    "最后生成、评审或修改",
+    "章节完稿后强制进入一致性审查"
+  ],
+  "chains": {
+    "planning": ["concept_planning", "opening", "volume_outline"],
+    "chapterDraft": [
+      "plot_logic",
+      "character_consistency",
+      "transition",
+      "dialogue",
+      "chapter_ending",
+      "anti_ai_voice",
+      "consistency_review"
+    ],
+    "finalReview": ["consistency_review"]
+  },
+  "modules": [
+    {
+      "id": "concept_planning",
+      "name": "前置规划",
+      "stage": "规划层",
+      "purpose": "把简介压成题材、消费点、hook、premise、故事引擎和第一卷方向"
+    },
+    {
+      "id": "opening",
+      "name": "开头",
+      "stage": "开篇执行层",
+      "purpose": "让卖点、异常局面和主角亮相在开头成交区出现"
+    },
+    {
+      "id": "volume_outline",
+      "name": "分卷章纲",
+      "stage": "中长线结构层",
+      "purpose": "规划黄金三章、第一卷和前 10 到 20 章章纲"
+    },
+    {
+      "id": "plot_logic",
+      "name": "剧情逻辑",
+      "stage": "正文执行层",
+      "purpose": "维护动机、触发、决策、后果和兑现"
+    },
+    {
+      "id": "character_consistency",
+      "name": "人物一致性",
+      "stage": "正文执行层",
+      "purpose": "维护目标、情绪、关系、身体和声音连续性"
+    },
+    {
+      "id": "transition",
+      "name": "转场",
+      "stage": "正文执行层",
+      "purpose": "处理时间、空间、情绪、视角和章节承接"
+    },
+    {
+      "id": "dialogue",
+      "name": "对白",
+      "stage": "正文执行层",
+      "purpose": "让对白承载关系压力、人物声音、信息嵌入和局面推进"
+    },
+    {
+      "id": "chapter_ending",
+      "name": "章末",
+      "stage": "正文执行层",
+      "purpose": "处理章末落点、后劲、回钩和下一章承接"
+    },
+    {
+      "id": "anti_ai_voice",
+      "name": "去 AI 味",
+      "stage": "风格约束层",
+      "purpose": "清理空泛总结、套话氛围、说明书对白和统一腔调"
+    },
+    {
+      "id": "consistency_review",
+      "name": "一致性审查",
+      "stage": "完稿收口层",
+      "purpose": "章节完稿后统一检查六项一致性"
+    }
+  ]
+}
+

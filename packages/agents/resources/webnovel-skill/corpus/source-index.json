@@ -1,0 +1,37 @@
+{
+  "name": "外部语料源索引",
+  "sourceRepository": "https://github.com/Tomsawyerhu/Chinese-WebNovel-Skill",
+  "sourceCommit": "4e0332eec0da62bf160eb284944a4c0def40b4c9",
+  "containsFullText": false,
+  "externalSourceSummary": {
+    "articleTextFiles": 166,
+    "analysisFiles": [
+      "analysis/article_profiles.csv",
+      "analysis/article_profiles.jsonl",
+      "analysis/excerpts.csv",
+      "analysis/excerpts.jsonl",
+      "analysis/imitation_index.md",
+      "analysis/stats.json"
+    ],
+    "demoDirectories": ["中长篇demo", "各类主题短篇demo"],
+    "moduleDirectories": [
+      "concept_planning",
+      "opening",
+      "volume_outline",
+      "plot_logic",
+      "character_consistency",
+      "transition",
+      "dialogue",
+      "chapter_ending",
+      "anti_ai_voice",
+      "consistency_review"
+    ]
+  },
+  "localImportPolicy": [
+    "默认不内置全文。",
+    "若用户确认授权，可导入到本地私有素材库。",
+    "导入后必须记录来源、hash、授权说明和作用域。",
+    "检索时默认返回结构摘要，不直接输出长篇原文。"
+  ]
+}
+

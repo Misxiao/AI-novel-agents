@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 38 46% 94%;
+    --foreground: 33 24% 12%;
+    --card: 40 40% 97%;
+    --card-foreground: 33 24% 12%;
+    --popover: 40 40% 97%;
+    --popover-foreground: 33 24% 12%;
+    --primary: 174 36% 25%;
+    --primary-foreground: 44 48% 94%;
+    --secondary: 37 25% 87%;
+    --secondary-foreground: 32 24% 18%;
+    --muted: 38 26% 88%;
+    --muted-foreground: 31 12% 40%;
+    --accent: 26 68% 48%;
+    --accent-foreground: 42 52% 95%;
+    --destructive: 4 55% 42%;
+    --destructive-foreground: 42 52% 95%;
+    --border: 34 18% 78%;
+    --input: 34 18% 78%;
+    --ring: 174 36% 25%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    background:
+      linear-gradient(120deg, rgba(255, 250, 241, 0.78), rgba(236, 226, 211, 0.86)),
+      radial-gradient(circle at 20% 0%, rgba(177, 74, 40, 0.10), transparent 28%),
+      radial-gradient(circle at 84% 10%, rgba(42, 103, 95, 0.12), transparent 32%),
+      hsl(var(--background));
+  }
+
+  ::selection {
+    background: rgba(42, 103, 95, 0.22);
+  }
+}
+
+@layer components {
+  .workbench-shell {
+    background-image:
+      linear-gradient(rgba(44, 35, 24, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(44, 35, 24, 0.035) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .ink-title {
+    font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+    letter-spacing: 0;
+  }
+
+  .paper-panel {
+    @apply border border-border/80 bg-card/90 shadow-manuscript backdrop-blur;
+  }
+
+  .dense-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
