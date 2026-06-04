@@ -12,6 +12,8 @@
 
 ## 2. 总体架构
 
+系统架构主入口见 `docs/architecture/system-architecture.md`。本文保留技术栈、模块职责和阶段性设计，涉及前端任务入口、Agent harness、RAG 与本地资产分层时，以系统架构总览为准。
+
 ```mermaid
 flowchart LR
   Web["apps/web\nVite + React"] --> API["apps/api\nFastify"]
@@ -70,6 +72,16 @@ LangGraph 工作流与 Agent 节点。内置工作流包括：
 - `resources/webnovel-skill/`：模块素材包和外部语料源索引。
 
 这些能力由代码维护，不通过前端暴露为可配置项。
+
+Agent 系统采用“Agent 角色 + 子能力”模型：
+
+- `core` 定义 Agent、Capability 和注册表。
+- `agents` 定义灵感、总编、大纲、正文、评审、记忆、数据分析七类 Agent。
+- `graphs` 保存后续 LangGraph 实现的工作流蓝图。
+
+正文生成和正文修改不再拆成两个顶层 Agent，统一归入 `prose` 正文 Agent。大纲相关的整书、分卷、章纲生成与修改统一归入 `outline` 大纲 Agent。
+
+Agent 层的详细目录职责、调用边界、Harness 设计、上下文装配策略和后续拆分方案见 `docs/architecture/agent-layer-technical-design.md`。
 
 ### 3.4 `packages/domain`
 

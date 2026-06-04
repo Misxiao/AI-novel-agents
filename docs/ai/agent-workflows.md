@@ -19,6 +19,8 @@
 - 数据分析 Agent：后续分析阅读数据和评论反馈。
 - 总编/调度 Agent：选择下一步工作流和人工确认点。
 
+顶层 Agent 只保留稳定职责域。生成 Agent 和修改 Agent 不作为顶层 Agent 存在，统一收敛为正文 Agent 的子能力。大纲 Agent 也不是单一功能，它同时承担整书大纲、分卷大纲、章纲的生成与修改。
+
 ## MVP 工作流
 
 - `novel-intake-graph`
@@ -27,6 +29,19 @@
 - `chapter-review-graph`
 - `chapter-revision-graph`
 - `memory-update-graph`
+
+当前已落地的最小 LangGraph 是 `outline-planning-graph`，执行链为：
+
+```txt
+director.planNextAction
+-> memory.retrieveContext
+-> outline.generateBookOutline
+-> review.reviewOutline
+-> outline.generateVolumeOutline
+-> outline.generateChapterPlans
+```
+
+其中 `outline.generateBookOutline` 是强节点，失败会导致任务失败；其余辅助节点先按软节点处理，真实调用 LLM，但失败只写入大纲问题列表，不阻断首次大纲生成。
 
 ## 中文网文专项链路
 

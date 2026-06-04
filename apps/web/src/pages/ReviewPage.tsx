@@ -4,7 +4,7 @@ import { QualityPill } from "@/components/StatusPill";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getReviewReport } from "@/services/mockApi";
+import { getReviewReport } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { useAsyncValue } from "@/hooks/useAsyncValue";
 

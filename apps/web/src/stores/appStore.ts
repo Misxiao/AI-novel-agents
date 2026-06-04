@@ -16,7 +16,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  selectedNovelId: "novel-ink-city",
+  selectedNovelId: "",
   sidebarOpen: false,
   taskStatusFilter: "all",
   draftBodies: {},

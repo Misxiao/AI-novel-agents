@@ -13,14 +13,14 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, hint, icon: Icon, tone = "ink" }: MetricCardProps) {
   const toneClass = {
-    jade: "bg-emerald-900 text-emerald-50",
-    amber: "bg-amber-700 text-amber-50",
-    cinnabar: "bg-red-800 text-red-50",
-    ink: "bg-stone-900 text-stone-50",
+    jade: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+    amber: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+    cinnabar: "bg-red-50 text-red-700 ring-1 ring-red-200",
+    ink: "bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200",
   }[tone];
 
   return (
-    <Card className="paper-panel overflow-hidden">
+    <Card className="overflow-hidden border-white/80 bg-white/86 shadow-[0_18px_50px_rgba(15,23,42,0.07)] backdrop-blur">
       <CardContent className="flex items-start gap-4 p-4">
         <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-md", toneClass)}>
           <Icon className="h-5 w-5" />

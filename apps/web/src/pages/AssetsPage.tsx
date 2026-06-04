@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTime } from "@/lib/format";
-import { getNovelAssets } from "@/services/mockApi";
+import { getNovelAssets } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { useAsyncValue } from "@/hooks/useAsyncValue";
 import type { AssetKind } from "@/types";
@@ -34,7 +34,7 @@ export function AssetsPage() {
         <Card className="paper-panel">
           <CardHeader>
             <CardTitle className="ink-title text-2xl">角色库</CardTitle>
-            <CardDescription>角色口吻、状态和人物弧线只属于当前 novelId。</CardDescription>
+            <CardDescription>角色口吻、状态和人物弧线。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.characters.map((character) => (

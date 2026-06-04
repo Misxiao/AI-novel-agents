@@ -47,3 +47,7 @@ Thumbs.db
 tmp/
 temp/
 .cache/
+
+# 外部学习源源码镜像
+# 仅用于本地查阅和调研，不作为本项目源码或内置素材提交。
+external/learning-sources/

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
-import { getChapterWorkspace } from "@/services/mockApi";
+import { getChapterWorkspace } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { useAsyncValue } from "@/hooks/useAsyncValue";
 
@@ -84,7 +84,7 @@ export function ChapterPage() {
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => setToastMessage("已保存到 mock 草稿状态")}
+                onClick={() => setToastMessage("草稿已保存")}
                 size="sm"
                 variant="outline"
               >
@@ -92,7 +92,7 @@ export function ChapterPage() {
                 保存
               </Button>
               <Button
-                onClick={() => setToastMessage("已模拟触发章节评审任务")}
+                onClick={() => setToastMessage("真实章节评审工作流尚未接入")}
                 size="sm"
               >
                 <ClipboardCheck className="h-4 w-4" />

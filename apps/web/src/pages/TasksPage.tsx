@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
-import { listNovelTasks, retryTask } from "@/services/mockApi";
+import { listNovelTasks, retryTask } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import type { TaskStatus, WorkflowTask } from "@/types";
 
@@ -37,7 +37,7 @@ export function TasksPage() {
   const handleRetry = async (taskId: string) => {
     const updated = await retryTask(taskId);
     setTasks((items) => items.map((item) => (item.taskId === taskId ? updated : item)));
-    setToastMessage("失败任务已模拟重新入队");
+    setToastMessage("失败任务已重新入队");
   };
 
   return (
