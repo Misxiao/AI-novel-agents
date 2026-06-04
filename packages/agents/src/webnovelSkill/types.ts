@@ -85,3 +85,10 @@ export interface WebnovelPromptContext {
   materialQueries: WebnovelMaterialHint[];
 }
 
+export interface WebnovelModuleRuntimeDefinition {
+  id: WebnovelModuleId;
+  name: string;
+  stage: string;
+  purpose: string;
+}
+

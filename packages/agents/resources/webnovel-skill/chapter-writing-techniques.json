@@ -1,0 +1,115 @@
+{
+  "name": "章节写作技法资源",
+  "version": "2026-06-04",
+  "scope": "chapter.writeNextChapter",
+  "usage": "当前资源为 ChapterAgent 的正文生成技法来源；运行时摘要位于 packages/agents/src/agents/chapter/resources/chapterWritingTechniques.ts。",
+  "sources": [
+    {
+      "id": "source-pacing-reward-density",
+      "platform": "写作博客",
+      "title": "网文节奏与爽点设计",
+      "url": "https://maliangwriter.com/blog/novel-pacing-hook-design-guide/"
+    },
+    {
+      "id": "source-tieba-paragraphing",
+      "platform": "百度贴吧",
+      "title": "网络小说分段技巧详谈",
+      "url": "https://tieba.baidu.com/p/3258183769"
+    },
+    {
+      "id": "source-douyin-opening-six",
+      "platform": "抖音精选",
+      "title": "网文写作技巧：开篇黄金六要素",
+      "url": "https://jingxuan.douyin.com/m/video/7541541797818830130"
+    },
+    {
+      "id": "source-douyin-staircase",
+      "platform": "抖音",
+      "title": "阶梯式主线写法与爽点优化",
+      "url": "https://www.douyin.com/shipin/7318841931189078031"
+    },
+    {
+      "id": "source-tieba-qidian-summary",
+      "platform": "百度贴吧",
+      "title": "龙空精华搬运：起点吧写作总结",
+      "url": "https://tieba.baidu.com/p/10071180915"
+    },
+    {
+      "id": "source-webnovel-research",
+      "platform": "学术论文",
+      "title": "数字时代的文学变奏：网络小说创作",
+      "url": "https://wxy.yzu.edu.cn/__local/5/F9/02/27FCB2057D079135EA16E6B8E1A_39F674A4_1ECA1A.pdf"
+    },
+    {
+      "id": "source-longform-pacing-research",
+      "platform": "arXiv",
+      "title": "Improving Pacing in Long-Form Story Planning",
+      "url": "https://arxiv.org/abs/2311.04459"
+    }
+  ],
+  "categories": [
+    {
+      "id": "opening-hook",
+      "title": "开篇与入章钩子",
+      "rules": [
+        "尽快给出主角、处境和正在发生的具体事件。",
+        "优先用主角视角或强相关视角切入。",
+        "世界观只露出当前情节需要的一角。"
+      ]
+    },
+    {
+      "id": "chapter-micro-structure",
+      "title": "章节微结构",
+      "rules": [
+        "每章至少完成目标、阻碍、变化。",
+        "用小型起承转合推进章节。",
+        "关键选择和后果具体写，过渡信息压缩写。"
+      ]
+    },
+    {
+      "id": "pacing-reward",
+      "title": "节奏与获得感",
+      "rules": [
+        "每章至少给一个小回报。",
+        "高光时刻要有铺垫、爆发、旁观反应和局面改变。",
+        "情绪强度波浪式上升，避免全章均匀。"
+      ]
+    },
+    {
+      "id": "chapter-ending",
+      "title": "章末钩子",
+      "rules": [
+        "章末停在问题、威胁、揭示、反转、情绪爆点或新行动之前。",
+        "钩子必须来自本章变化。",
+        "钩子需要在后续一到两章内兑现或推进。"
+      ]
+    },
+    {
+      "id": "character-dialogue",
+      "title": "人物与对白",
+      "rules": [
+        "主角必须有积极行动或可共鸣目标。",
+        "对白必须改变信息、关系或局面之一。",
+        "不同角色要有不同声音边界。"
+      ]
+    },
+    {
+      "id": "paragraph-lens",
+      "title": "移动阅读分段与镜头感",
+      "rules": [
+        "避免连续大段，长短段落错落使用。",
+        "短句和独立段可用于蓄势、停顿、转折和慢镜头。",
+        "场景转换要带状态、空间、动作或物件。"
+      ]
+    },
+    {
+      "id": "ai-draft-guardrails",
+      "title": "AI 草稿去模板化",
+      "rules": [
+        "必须沿着章纲目标和本章钩子生成。",
+        "减少抽象感叹，增加具体动作、选择、代价和反应。",
+        "自查重复解释、万能形容词、同质化对白和无后果事件。"
+      ]
+    }
+  ]
+}

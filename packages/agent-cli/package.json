@@ -1,0 +1,23 @@
+{
+  "name": "@ai-novel-agents/agent-cli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "ai-novel-agent": "./dist/index.js"
+  },
+  "scripts": {
+    "demo": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit --pretty false",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@ai-novel-agents/agents": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}
+

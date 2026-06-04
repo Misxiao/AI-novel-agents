@@ -6,8 +6,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --pretty false",
     "build": "tsc"
+  },
+  "dependencies": {
+    "@ai-novel-agents/llm": "workspace:*"
   }
 }
-
