@@ -56,6 +56,7 @@ export function buildWriteNextChapterMessages(input: WriteNextChapterInput): Cha
       "",
       ...renderNovelAndPlan(input),
       ...renderContext(input.context),
+      ...renderDraftPlan(input.draftPlan),
       "",
       "## 写作约束",
       `目标字数：约 ${targetWords} 个中文字符，可上下浮动，但不要明显短章。`,
@@ -223,6 +224,29 @@ function renderContext(context?: ChapterContextPackage) {
     ...renderList("伏笔状态", context?.foreshadowing?.map((item) => `${item.title}（${item.status}）：${item.summary}${item.payoffHint ? `；兑现提示：${item.payoffHint}` : ""}`)),
     ...renderList("Canon 事实", context?.canonFacts),
     ...renderList("检索片段", context?.ragSnippets),
+  ];
+}
+
+function renderDraftPlan(draftPlan?: WriteNextChapterInput["draftPlan"]) {
+  if (!draftPlan) {
+    return [
+      "",
+      "## 写作执行计划",
+      "暂缺，请直接按当前章纲和上下文生成，但必须保持目标、阻碍、变化和章末拉力清晰。",
+    ];
+  }
+
+  return [
+    "",
+    "## 写作执行计划",
+    `视角：${draftPlan.viewpoint}`,
+    `目标：${draftPlan.objective}`,
+    `阻碍：${draftPlan.obstacle}`,
+    `章末变化：${draftPlan.change}`,
+    `预期爽点：${draftPlan.rewardMoment}`,
+    `章末钩子：${draftPlan.endingHook}`,
+    ...renderList("场景节拍", draftPlan.sceneBeats.map((beat) => `场景 ${beat.sceneNo}：${beat.purpose}；冲突：${beat.conflict}；变化：${beat.change}`)),
+    ...renderList("风险规避", draftPlan.riskNotes),
   ];
 }
 

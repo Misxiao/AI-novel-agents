@@ -8,11 +8,13 @@
   },
   "scripts": {
     "demo": "tsx src/index.ts",
+    "test:write-workflow": "tsx src/writeWorkflowPreset.ts",
     "typecheck": "tsc --noEmit --pretty false",
     "build": "tsc"
   },
   "dependencies": {
-    "@ai-novel-agents/agents": "workspace:*"
+    "@ai-novel-agents/agents": "workspace:*",
+    "@ai-novel-agents/workflow": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
@@ -20,4 +22,3 @@
     "typescript": "^5.8.3"
   }
 }
-

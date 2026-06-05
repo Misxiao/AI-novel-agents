@@ -26,6 +26,7 @@
 - 不要在没有明确需求时加入云端依赖；优先保持本地可运行。
 - 中文网文写作专项逻辑内置在 `packages/agents/src/webnovelSkill/`，素材包放在 `packages/agents/resources/webnovel-skill/`。这些内容属于系统能力，不提供前端配置入口。
 - 外部写作语料必须先确认授权再导入。未确认授权的长文本语料只能作为外部来源索引记录，不得默认复制进项目作为内置语料。
+- 外部学习源中写得好的 Prompt、Skill 规则、审查维度、写作技法和文本结构样式，可以经过方法论提炼、结构转译、原创化重写和项目化内化后，改造成项目自有能力；不得近似复制未授权长文本、示例正文、大段 Prompt 或受许可证限制的源码。
 - 外部开源项目、Skill、论文或资料库作为学习源时，统一登记在 `docs/research/external-learning-sources.md`，本地源码镜像放在 `external/learning-sources/`。该目录仅用于查阅和调研，不作为本项目源码或内置素材提交。
 - 当前阶段优先建设可独立运行的 Agent 层和 Workflow 层。新增或修改 Agent/Workflow 能力时，默认只改 `packages/agents`、`packages/workflow` 及相关说明文档；不要同步修改 `apps/web`、`apps/api` 或接口接入层。等 Agent/Workflow 独立验证稳定后，再单独规划 Web/API 接入。
 
@@ -44,7 +45,7 @@
 
 - `docs/research/external-learning-sources.md`
 
-然后按索引阅读相关调研记录和 `external/learning-sources/` 下的本地学习源。优先吸收架构、流程、模块边界、检索方法和质量评审思路；未经授权确认，不要复制外部仓库中的长文本语料、示例正文或大段 Prompt。
+然后按索引阅读相关调研记录和 `external/learning-sources/` 下的本地学习源。优先吸收架构、流程、模块边界、检索方法、质量评审思路、优秀 Prompt 的组织方式和文本结构模式；内化时必须改写成项目自有表达，未经授权确认，不要复制或近似复刻外部仓库中的长文本语料、示例正文、大段 Prompt 或受许可证限制的源码。
 
 新增代码时优先保持模块边界：
 

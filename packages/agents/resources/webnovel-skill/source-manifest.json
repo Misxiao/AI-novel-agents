@@ -10,7 +10,9 @@
       "专项模块职责",
       "模块路由逻辑",
       "章节完稿强制审查思想",
-      "素材检索优先、只借结构不借句面的使用原则"
+      "素材检索优先、只借结构不借句面的使用原则",
+      "章节目标-阻碍-变化-追读钩子的写作前检查框架",
+      "对白压力、章末拉力和去 AI 味的章节执行约束"
     ],
     "notImportedByDefault": [
       "data/articles 下的小说正文全文",
@@ -23,6 +25,38 @@
     "增加用户确认授权后的本地语料导入器",
     "导入时保存来源、授权说明、hash 和 novelId/global 作用域",
     "生成检索索引时只用于本地私有环境"
+  ],
+  "derivedRules": [
+    {
+      "id": "chapter-quality-loop-2026-06-04",
+      "sources": [
+        {
+          "name": "Chinese-WebNovel-Skill",
+          "sourceRepository": "https://github.com/Tomsawyerhu/Chinese-WebNovel-Skill",
+          "sourceCommit": "4e0332eec0da62bf160eb284944a4c0def40b4c9",
+          "licenseStatus": "未在仓库根目录发现 LICENSE 文件"
+        },
+        {
+          "name": "novelix",
+          "sourceRepository": "https://github.com/zxerai/novelix",
+          "sourceCommit": "本地镜像观察，详见 docs/research/novelix-study.md",
+          "licenseStatus": "AGPL-3.0-only"
+        }
+      ],
+      "scope": "review.reviewChapter 与 workflow.writeNextChapter",
+      "derivedBy": "方法论提炼、结构转译、原创化重写和项目化表达",
+      "imported": [
+        "审计-修订-复审的质量闭环",
+        "六项一致性完稿审查",
+        "章节目标、阻碍、变化、爽点、章末钩子的门禁描述",
+        "对白压力、章末拉力、去 AI 味和字数治理检查项"
+      ],
+      "notImported": [
+        "外部源码实现",
+        "未授权长文本语料",
+        "示例正文",
+        "大段 Prompt 原文"
+      ]
+    }
   ]
 }
-

@@ -103,6 +103,9 @@ importers:
       '@ai-novel-agents/agents':
         specifier: workspace:*
         version: link:../agents
+      '@ai-novel-agents/workflow':
+        specifier: workspace:*
+        version: link:../workflow
     devDependencies:
       '@types/node':
         specifier: ^22.10.1
@@ -138,11 +141,24 @@ importers:
 
   packages/llm: {}
 
+  packages/repositories:
+    dependencies:
+      '@ai-novel-agents/db':
+        specifier: workspace:*
+        version: link:../db
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/workflow:
     dependencies:
       '@ai-novel-agents/agents':
         specifier: workspace:*
         version: link:../agents
+      '@ai-novel-agents/repositories':
+        specifier: workspace:*
+        version: link:../repositories
 
 packages:
 

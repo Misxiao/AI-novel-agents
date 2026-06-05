@@ -82,6 +82,7 @@ export interface WriteNextChapterInput {
   novel: ChapterNovelInput;
   chapterPlan: ChapterPlanInput;
   context?: ChapterContextPackage;
+  draftPlan?: PlanChapterDraftOutput;
   targetWords?: number;
 }
 

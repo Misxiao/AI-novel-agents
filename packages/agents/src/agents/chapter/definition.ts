@@ -5,7 +5,6 @@ export const chapterAgentDefinition: AgentDefinition = {
   name: "章节 Agent",
   role: "负责章节正文生产、修订和局部编辑，输出待确认正文，不直接写入 canon。",
   capabilities: [
-    "chapter.planChapterDraft",
     "chapter.writeNextChapter",
     "chapter.reviseChapter",
     "chapter.rewriteScene",
