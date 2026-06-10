@@ -5,12 +5,64 @@ import { dirname, resolve } from "node:path";
 export type NovelStage = "立项" | "大纲" | "连载" | "修订" | "归档";
 export type QualityState = "健康" | "关注" | "风险";
 export type TaskStatus = "queued" | "running" | "waiting_for_user" | "succeeded" | "failed" | "cancelled";
+export type StoredChapterContextStatus = "draft" | "confirmed";
+export type PreflightAssetKind = "foundation" | "setting" | "outline";
+export type PreflightAssetStatus = "草稿" | "待确认" | "已确认" | "需修订";
+export type OutlineRevisionStatus = "待确认" | "需修订" | "已确认";
+export type OutlineRevisionScope = "master" | "volume";
 
 export interface CreateNovelInput {
   title?: string;
   genre?: string;
   seedIdea: string;
   targetWords: number;
+}
+
+export interface SavePreflightAssetInput<TAsset = unknown> {
+  novelId: string;
+  kind: PreflightAssetKind;
+  status: PreflightAssetStatus;
+  asset: TAsset;
+}
+
+export interface StoredPreflightAsset<TAsset = unknown> extends SavePreflightAssetInput<TAsset> {
+  updatedAt: string;
+}
+
+export interface SaveOutlineRevisionVersionInput<TVersion = unknown> {
+  novelId: string;
+  versionId: string;
+  sourceVersionId?: string;
+  status: OutlineRevisionStatus;
+  scope: OutlineRevisionScope;
+  targetVolumeId?: string;
+  version: TVersion;
+  createdAt: string;
+}
+
+export type StoredOutlineRevisionVersion<TVersion = unknown> =
+  SaveOutlineRevisionVersionInput<TVersion>;
+
+export interface ConfirmNovelOutlineInput<
+  TFoundation = unknown,
+  TSetting = unknown,
+  TOutline extends PersistedOutlineShape = PersistedOutlineShape,
+> {
+  novelId: string;
+  foundation: TFoundation;
+  setting: TSetting;
+  outline: TOutline;
+  chapterPlans: StoredChapterPlan[];
+  selectedVersionId?: string;
+  novel: {
+    title: string;
+    hook: string;
+    targetReaders: string;
+    targetWords: number;
+    totalChapters: number;
+    currentVolume: string;
+  };
+  task: StoredWorkflowTask;
 }
 
 export interface UpdateNovelInput {
@@ -55,13 +107,37 @@ export interface StoredChapterPlan {
   novelId: string;
   chapterNo: number;
   title: string;
+  volumeId?: string;
   volumeTitle: string;
   objective: string;
   hook: string;
   status: string;
 }
 
-interface PersistedOutlineShape {
+export interface SaveChapterContextInput {
+  novelId: string;
+  chapterNo: number;
+  title: string;
+  summary: string;
+  content: string;
+  endingHook?: string;
+  endingExcerpt?: string;
+  status: StoredChapterContextStatus;
+}
+
+export interface StoredChapterContext {
+  novelId: string;
+  chapterNo: number;
+  title: string;
+  summary: string;
+  content: string;
+  endingHook?: string;
+  endingExcerpt: string;
+  status: StoredChapterContextStatus;
+  updatedAt: string;
+}
+
+export interface PersistedOutlineShape {
   novelId: string;
   volumes?: Array<{ title?: string }>;
 }
@@ -112,10 +188,42 @@ interface ChapterPlanRow {
   novel_id: string;
   chapter_no: number;
   title: string;
+  volume_id?: string | null;
   volume_title: string;
   objective: string;
   hook: string;
   status: string;
+}
+
+interface ChapterContextRow {
+  novel_id: string;
+  chapter_no: number;
+  title: string;
+  summary: string;
+  content: string;
+  ending_hook: string | null;
+  ending_excerpt: string;
+  status: StoredChapterContextStatus;
+  updated_at: string;
+}
+
+interface PreflightAssetRow {
+  novel_id: string;
+  kind: PreflightAssetKind;
+  status: PreflightAssetStatus;
+  asset_json: string;
+  updated_at: string;
+}
+
+interface OutlineRevisionVersionRow {
+  novel_id: string;
+  version_id: string;
+  source_version_id: string | null;
+  status: OutlineRevisionStatus;
+  scope: OutlineRevisionScope;
+  target_volume_id: string | null;
+  version_json: string;
+  created_at: string;
 }
 
 export class NovelDatabase {
@@ -169,6 +277,108 @@ export class NovelDatabase {
     return row ? mapTaskRow(row) : null;
   }
 
+  saveWorkflowTask(task: StoredWorkflowTask): StoredWorkflowTask {
+    if (!this.getNovel(task.novelId)) {
+      throw new Error(`未找到小说项目：${task.novelId}`);
+    }
+
+    this.db
+      .prepare(
+        `INSERT INTO workflow_tasks (
+          task_id, novel_id, title, workflow_name, status, input_snapshot,
+          output_snapshot, error, started_at, finished_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(task_id) DO UPDATE SET
+          status = excluded.status,
+          output_snapshot = excluded.output_snapshot,
+          error = excluded.error,
+          finished_at = excluded.finished_at`,
+      )
+      .run(
+        task.taskId,
+        task.novelId,
+        task.title,
+        task.workflowName,
+        task.status,
+        task.inputSnapshot,
+        task.outputSnapshot,
+        task.error ?? null,
+        task.startedAt,
+        task.finishedAt ?? null,
+      );
+
+    return this.getTask(task.taskId) ?? task;
+  }
+
+  saveChapterContext(input: SaveChapterContextInput): StoredChapterContext {
+    const novel = this.getNovel(input.novelId);
+    if (!novel) {
+      throw new Error(`未找到小说项目：${input.novelId}`);
+    }
+
+    const now = new Date().toISOString();
+    const endingExcerpt = input.endingExcerpt?.trim() || buildEndingExcerpt(input.content);
+    this.db
+      .prepare(
+        `INSERT INTO chapter_contexts (
+          novel_id, chapter_no, title, summary, content, ending_hook,
+          ending_excerpt, status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(novel_id, chapter_no) DO UPDATE SET
+          title = excluded.title,
+          summary = excluded.summary,
+          content = excluded.content,
+          ending_hook = excluded.ending_hook,
+          ending_excerpt = excluded.ending_excerpt,
+          status = excluded.status,
+          updated_at = excluded.updated_at`,
+      )
+      .run(
+        input.novelId,
+        input.chapterNo,
+        input.title,
+        input.summary,
+        input.content,
+        input.endingHook?.trim() || null,
+        endingExcerpt,
+        input.status,
+        now,
+      );
+
+    const saved = this.getChapterContext(input.novelId, input.chapterNo);
+    if (!saved) {
+      throw new Error("章节上下文保存失败。");
+    }
+    return saved;
+  }
+
+  getChapterContext(novelId: string, chapterNo: number): StoredChapterContext | null {
+    const row = this.db
+      .prepare("SELECT * FROM chapter_contexts WHERE novel_id = ? AND chapter_no = ?")
+      .get(novelId, chapterNo) as ChapterContextRow | undefined;
+    return row ? mapChapterContextRow(row) : null;
+  }
+
+  listChapterContexts(novelId: string, status?: StoredChapterContextStatus): StoredChapterContext[] {
+    const rows = status
+      ? (this.db
+          .prepare(
+            `SELECT * FROM chapter_contexts
+             WHERE novel_id = ? AND status = ?
+             ORDER BY chapter_no ASC`,
+          )
+          .all(novelId, status) as ChapterContextRow[])
+      : (this.db
+          .prepare(
+            `SELECT * FROM chapter_contexts
+             WHERE novel_id = ?
+             ORDER BY chapter_no ASC`,
+          )
+          .all(novelId) as ChapterContextRow[]);
+
+    return rows.map(mapChapterContextRow);
+  }
+
   queueTaskRetry(taskId: string): StoredWorkflowTask | null {
     const task = this.getTask(taskId);
     if (!task || task.status !== "failed") {
@@ -189,6 +399,30 @@ export class NovelDatabase {
       .run(now, taskId);
 
     return this.getTask(taskId);
+  }
+
+  createEmptyNovel(): StoredNovel {
+    const now = new Date().toISOString();
+    const novel: StoredNovel = {
+      novelId: `novel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title: "",
+      genre: "",
+      stage: "立项",
+      hook: "",
+      targetReaders: "",
+      totalChapters: 0,
+      completedChapters: 0,
+      qualityScore: 0,
+      qualityState: "关注",
+      archived: false,
+      updatedAt: now,
+      recentTask: "空小说项目已创建，等待用户提供初步想法",
+      currentVolume: "",
+      targetWords: 0,
+    };
+
+    this.insertNovel(novel);
+    return novel;
   }
 
   createNovel(input: CreateNovelInput): StoredNovel {
@@ -216,21 +450,108 @@ export class NovelDatabase {
       targetWords,
     };
 
-    this.db
-      .prepare(
-        `INSERT INTO novels (
-          novel_id, title, genre, stage, hook, target_readers, total_chapters,
-          completed_chapters, quality_score, quality_state, archived,
-          updated_at, recent_task, current_volume, target_words
-        ) VALUES (
-          @novelId, @title, @genre, @stage, @hook, @targetReaders, @totalChapters,
-          @completedChapters, @qualityScore, @qualityState, @archived,
-          @updatedAt, @recentTask, @currentVolume, @targetWords
-        )`,
-      )
-      .run({ ...novel, archived: novel.archived ? 1 : 0 });
+    this.insertNovel(novel);
 
     return novel;
+  }
+
+  savePreflightAsset<TAsset>(
+    input: SavePreflightAssetInput<TAsset>,
+  ): StoredPreflightAsset<TAsset> {
+    if (!this.getNovel(input.novelId)) {
+      throw new Error(`未找到小说项目：${input.novelId}`);
+    }
+
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `INSERT INTO preflight_assets (novel_id, kind, status, asset_json, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(novel_id, kind) DO UPDATE SET
+           status = excluded.status,
+           asset_json = excluded.asset_json,
+           updated_at = excluded.updated_at`,
+      )
+      .run(input.novelId, input.kind, input.status, JSON.stringify(input.asset), now);
+
+    return { ...input, updatedAt: now };
+  }
+
+  getPreflightAsset<TAsset>(
+    novelId: string,
+    kind: PreflightAssetKind,
+  ): StoredPreflightAsset<TAsset> | null {
+    const row = this.db
+      .prepare("SELECT * FROM preflight_assets WHERE novel_id = ? AND kind = ?")
+      .get(novelId, kind) as PreflightAssetRow | undefined;
+    if (!row) {
+      return null;
+    }
+
+    return {
+      novelId: row.novel_id,
+      kind: row.kind,
+      status: row.status,
+      asset: JSON.parse(row.asset_json) as TAsset,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  saveOutlineRevisionVersion<TVersion>(
+    input: SaveOutlineRevisionVersionInput<TVersion>,
+  ): StoredOutlineRevisionVersion<TVersion> {
+    if (!this.getNovel(input.novelId)) {
+      throw new Error(`未找到小说项目：${input.novelId}`);
+    }
+    this.db
+      .prepare(
+        `INSERT INTO outline_revision_versions (
+          novel_id, version_id, source_version_id, status, scope,
+          target_volume_id, version_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.novelId,
+        input.versionId,
+        input.sourceVersionId ?? null,
+        input.status,
+        input.scope,
+        input.targetVolumeId ?? null,
+        JSON.stringify(input.version),
+        input.createdAt,
+      );
+    return input;
+  }
+
+  getOutlineRevisionVersion<TVersion>(
+    novelId: string,
+    versionId: string,
+  ): StoredOutlineRevisionVersion<TVersion> | null {
+    const row = this.db
+      .prepare(
+        "SELECT * FROM outline_revision_versions WHERE novel_id = ? AND version_id = ?",
+      )
+      .get(novelId, versionId) as OutlineRevisionVersionRow | undefined;
+    return row ? mapOutlineRevisionVersionRow<TVersion>(row) : null;
+  }
+
+  listOutlineRevisionVersions<TVersion>(
+    novelId: string,
+  ): StoredOutlineRevisionVersion<TVersion>[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM outline_revision_versions
+         WHERE novel_id = ?
+         ORDER BY created_at DESC, version_id DESC`,
+      )
+      .all(novelId) as OutlineRevisionVersionRow[];
+    return rows.map((row) => mapOutlineRevisionVersionRow<TVersion>(row));
+  }
+
+  getLatestOutlineRevisionVersion<TVersion>(
+    novelId: string,
+  ): StoredOutlineRevisionVersion<TVersion> | null {
+    return this.listOutlineRevisionVersions<TVersion>(novelId)[0] ?? null;
   }
 
   updateNovel(novelId: string, input: UpdateNovelInput): StoredNovel | null {
@@ -279,8 +600,8 @@ export class NovelDatabase {
       this.db.prepare("DELETE FROM chapter_plans WHERE novel_id = ?").run(result.outline.novelId);
       const insertChapter = this.db.prepare(
         `INSERT INTO chapter_plans (
-          id, novel_id, chapter_no, title, volume_title, objective, hook, status, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, novel_id, chapter_no, title, volume_id, volume_title, objective, hook, status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       );
       for (const plan of result.chapterPlans) {
         insertChapter.run(
@@ -288,6 +609,7 @@ export class NovelDatabase {
           plan.novelId,
           plan.chapterNo,
           plan.title,
+          plan.volumeId ?? "",
           plan.volumeTitle,
           plan.objective,
           plan.hook,
@@ -332,6 +654,162 @@ export class NovelDatabase {
     });
 
     save();
+  }
+
+  confirmNovelOutline<
+    TFoundation,
+    TSetting,
+    TOutline extends PersistedOutlineShape,
+  >(
+    input: ConfirmNovelOutlineInput<TFoundation, TSetting, TOutline>,
+  ): StoredOutlineResult<TOutline> {
+    const novel = this.getNovel(input.novelId);
+    if (!novel) {
+      throw new Error(`未找到小说项目：${input.novelId}`);
+    }
+    if (input.outline.novelId !== input.novelId) {
+      throw new Error("正式大纲的 novelId 与目标小说不一致。");
+    }
+
+    const now = new Date().toISOString();
+    const save = this.db.transaction(() => {
+      const saveAsset = this.db.prepare(
+        `INSERT INTO preflight_assets (novel_id, kind, status, asset_json, updated_at)
+         VALUES (?, ?, '已确认', ?, ?)
+         ON CONFLICT(novel_id, kind) DO UPDATE SET
+           status = excluded.status,
+           asset_json = excluded.asset_json,
+           updated_at = excluded.updated_at`,
+      );
+      saveAsset.run(input.novelId, "foundation", JSON.stringify(input.foundation), now);
+      saveAsset.run(input.novelId, "setting", JSON.stringify(input.setting), now);
+      saveAsset.run(input.novelId, "outline", JSON.stringify(input.outline), now);
+
+      this.db
+        .prepare(
+          `INSERT INTO outlines (novel_id, outline_json, updated_at)
+           VALUES (?, ?, ?)
+           ON CONFLICT(novel_id) DO UPDATE SET
+             outline_json = excluded.outline_json,
+             updated_at = excluded.updated_at`,
+        )
+        .run(input.novelId, JSON.stringify(input.outline), now);
+
+      this.db.prepare("DELETE FROM chapter_plans WHERE novel_id = ?").run(input.novelId);
+      const insertChapter = this.db.prepare(
+        `INSERT INTO chapter_plans (
+          id, novel_id, chapter_no, title, volume_id, volume_title,
+          objective, hook, status, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const plan of input.chapterPlans) {
+        insertChapter.run(
+          plan.id,
+          plan.novelId,
+          plan.chapterNo,
+          plan.title,
+          plan.volumeId ?? "",
+          plan.volumeTitle,
+          plan.objective,
+          plan.hook,
+          plan.status,
+          now,
+        );
+      }
+
+      if (input.selectedVersionId) {
+        const stored = this.getOutlineRevisionVersion<Record<string, unknown>>(
+          input.novelId,
+          input.selectedVersionId,
+        );
+        if (!stored) {
+          throw new Error(`未找到大纲版本：${input.selectedVersionId}`);
+        }
+        const storedVersion = stored.version as Record<string, unknown>;
+        const revisedOutline = storedVersion.revisedOutline;
+        this.db
+          .prepare(
+            `UPDATE outline_revision_versions
+             SET status = '已确认',
+                 version_json = ?
+             WHERE novel_id = ? AND version_id = ?`,
+          )
+          .run(
+            JSON.stringify({
+              ...storedVersion,
+              status: "已确认",
+              ...(revisedOutline && typeof revisedOutline === "object"
+                ? {
+                    revisedOutline: {
+                      ...revisedOutline,
+                      status: "已确认",
+                    },
+                  }
+                : {}),
+            }),
+            input.novelId,
+            input.selectedVersionId,
+          );
+      }
+
+      this.db
+        .prepare(
+          `INSERT INTO workflow_tasks (
+            task_id, novel_id, title, workflow_name, status, input_snapshot,
+            output_snapshot, error, started_at, finished_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(task_id) DO UPDATE SET
+            status = excluded.status,
+            output_snapshot = excluded.output_snapshot,
+            error = excluded.error,
+            finished_at = excluded.finished_at`,
+        )
+        .run(
+          input.task.taskId,
+          input.task.novelId,
+          input.task.title,
+          input.task.workflowName,
+          input.task.status,
+          input.task.inputSnapshot,
+          input.task.outputSnapshot,
+          input.task.error ?? null,
+          input.task.startedAt,
+          input.task.finishedAt ?? now,
+        );
+
+      this.db
+        .prepare(
+          `UPDATE novels
+           SET title = ?,
+               hook = ?,
+               target_readers = ?,
+               target_words = ?,
+               total_chapters = ?,
+               current_volume = ?,
+               stage = '大纲',
+               recent_task = ?,
+               updated_at = ?
+           WHERE novel_id = ?`,
+        )
+        .run(
+          input.novel.title,
+          input.novel.hook,
+          input.novel.targetReaders,
+          input.novel.targetWords,
+          input.novel.totalChapters,
+          input.novel.currentVolume,
+          input.task.outputSnapshot,
+          now,
+          input.novelId,
+        );
+    });
+
+    save();
+    const result = this.getOutlineResult<TOutline>(input.novelId);
+    if (!result) {
+      throw new Error("正式大纲确认后读取失败。");
+    }
+    return result;
   }
 
   saveOutlineOnly(
@@ -451,6 +929,7 @@ export class NovelDatabase {
         novel_id TEXT NOT NULL,
         chapter_no INTEGER NOT NULL,
         title TEXT NOT NULL,
+        volume_id TEXT NOT NULL DEFAULT '',
         volume_title TEXT NOT NULL,
         objective TEXT NOT NULL,
         hook TEXT NOT NULL,
@@ -473,7 +952,68 @@ export class NovelDatabase {
         FOREIGN KEY (novel_id) REFERENCES novels(novel_id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS chapter_contexts (
+        novel_id TEXT NOT NULL,
+        chapter_no INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        content TEXT NOT NULL,
+        ending_hook TEXT,
+        ending_excerpt TEXT NOT NULL,
+        status TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (novel_id, chapter_no),
+        FOREIGN KEY (novel_id) REFERENCES novels(novel_id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS preflight_assets (
+        novel_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL,
+        asset_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (novel_id, kind),
+        FOREIGN KEY (novel_id) REFERENCES novels(novel_id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS outline_revision_versions (
+        novel_id TEXT NOT NULL,
+        version_id TEXT NOT NULL,
+        source_version_id TEXT,
+        status TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        target_volume_id TEXT,
+        version_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (novel_id, version_id),
+        FOREIGN KEY (novel_id) REFERENCES novels(novel_id) ON DELETE CASCADE
+      );
+
     `);
+    this.ensureColumn("chapter_plans", "volume_id", "TEXT NOT NULL DEFAULT ''");
+  }
+
+  private insertNovel(novel: StoredNovel) {
+    this.db
+      .prepare(
+        `INSERT INTO novels (
+          novel_id, title, genre, stage, hook, target_readers, total_chapters,
+          completed_chapters, quality_score, quality_state, archived,
+          updated_at, recent_task, current_volume, target_words
+        ) VALUES (
+          @novelId, @title, @genre, @stage, @hook, @targetReaders, @totalChapters,
+          @completedChapters, @qualityScore, @qualityState, @archived,
+          @updatedAt, @recentTask, @currentVolume, @targetWords
+        )`,
+      )
+      .run({ ...novel, archived: novel.archived ? 1 : 0 });
+  }
+
+  private ensureColumn(table: string, column: string, definition: string) {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((item) => item.name === column)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
   }
 }
 
@@ -526,11 +1066,49 @@ function mapChapterPlanRow(row: ChapterPlanRow): StoredChapterPlan {
     novelId: row.novel_id,
     chapterNo: row.chapter_no,
     title: row.title,
+    volumeId: row.volume_id?.trim() || "",
     volumeTitle: row.volume_title,
     objective: row.objective,
     hook: row.hook,
     status: row.status,
   };
+}
+
+function mapOutlineRevisionVersionRow<TVersion>(
+  row: OutlineRevisionVersionRow,
+): StoredOutlineRevisionVersion<TVersion> {
+  return {
+    novelId: row.novel_id,
+    versionId: row.version_id,
+    sourceVersionId: row.source_version_id ?? undefined,
+    status: row.status,
+    scope: row.scope,
+    targetVolumeId: row.target_volume_id ?? undefined,
+    version: JSON.parse(row.version_json) as TVersion,
+    createdAt: row.created_at,
+  };
+}
+
+function mapChapterContextRow(row: ChapterContextRow): StoredChapterContext {
+  return {
+    novelId: row.novel_id,
+    chapterNo: row.chapter_no,
+    title: row.title,
+    summary: row.summary,
+    content: row.content,
+    endingHook: row.ending_hook ?? undefined,
+    endingExcerpt: row.ending_excerpt,
+    status: row.status,
+    updatedAt: row.updated_at,
+  };
+}
+
+function buildEndingExcerpt(content: string) {
+  const normalized = content.trim();
+  if (normalized.length <= 600) {
+    return normalized;
+  }
+  return normalized.slice(-600);
 }
 
 function createSyntheticTask(novelId: string): StoredWorkflowTask {

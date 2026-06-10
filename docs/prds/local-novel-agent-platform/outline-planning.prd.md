@@ -218,7 +218,7 @@ MVP 页面可以先展示故事内时间顺序，并标明关联章节。
 限制：
 
 1. 只展示任务名称、输入摘要、输出结果和状态。
-2. 不展示 Agent 角色配置、Prompt 内容、Skill 权限或 LangGraph 节点图。
+2. 不展示 Agent 角色配置、Prompt 内容、Skill 权限或 Workflow 内部步骤图。
 3. 每个任务必须携带 `novelId`。
 
 ## 6. 长篇规模化处理策略
@@ -402,10 +402,10 @@ MVP mock 页面需要支持：
 
 大纲规划能力应连接以下工作流：
 
-- `outline-planning-graph`
-- `chapter-production-graph`
-- `chapter-review-graph`
-- `memory-update-graph`
+- `outline-planning`
+- `chapter-production`
+- `chapter-review`
+- `memory-update`
 
 关键约束：
 

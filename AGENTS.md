@@ -4,7 +4,7 @@
 
 这是一个本地优先的中文网文创作 Agent 管理平台。平台以 Web 方式管理多个小说项目，每本小说拥有独立记忆、独立创作资产、独立任务历史和独立质量报告。
 
-本项目不是 Prompt/Skill 配置平台。Agent、Prompt、Skill 模块、工具权限和 Workflow 均为项目内置能力，由代码和测试维护，不在前端暴露配置入口。
+本项目不是 Prompt/Skill 配置平台。Agent、Prompt、Skill 模块、工具权限和 Workflow 均为项目内置能力，由代码和文档维护，不在前端暴露配置入口。
 
 ## 技术边界
 
@@ -21,6 +21,7 @@
 - 面向开发者的说明、架构设计、PRD、规格文档、研究记录、Agent 工作流说明和 README 默认都属于项目文档，必须遵守中文文档约定。
 - PRD 存放在 `docs/prds/` 下。
 - 技术设计文档存放在 `docs/architecture/` 下。
+- 文档入口和权威来源见 `docs/README.md`。相同信息只维护一份，其他文档通过链接引用。
 - 不要把可变的 Agent 配置做成用户界面功能。
 - 不要把用户正在创作的小说内容、参考语料、阅读数据混入全局记忆。
 - 不要在没有明确需求时加入云端依赖；优先保持本地可运行。
@@ -30,22 +31,42 @@
 - 外部开源项目、Skill、论文或资料库作为学习源时，统一登记在 `docs/research/external-learning-sources.md`，本地源码镜像放在 `external/learning-sources/`。该目录仅用于查阅和调研，不作为本项目源码或内置素材提交。
 - 当前阶段优先建设可独立运行的 Agent 层和 Workflow 层。新增或修改 Agent/Workflow 能力时，默认只改 `packages/agents`、`packages/workflow` 及相关说明文档；不要同步修改 `apps/web`、`apps/api` 或接口接入层。等 Agent/Workflow 独立验证稳定后，再单独规划 Web/API 接入。
 
-## 推荐工作方式
+## 工作方式
 
-实现功能前先阅读：
+### 按任务规模选择流程
 
-- `docs/prds/local-novel-agent-platform/prd.md`
-- `docs/prds/local-novel-agent-platform/agent-system.prd.md`
-- `docs/architecture/system-architecture.md`
-- `docs/ai/agent-architecture.md`
-- `docs/architecture/technical-design.md`
-- `docs/architecture/project-structure.md`
+- 小型改动：目标明确、局部修改、通常不超过 3 个文件。直接阅读目标文件和直接依赖，修改后做一次必要验证；不创建设计文档、实施计划或多轮确认。
+- 中型改动：涉及同一模块内多个文件。先在对话中给出 3 到 5 条简短计划，再直接实施；除非用户要求，不落地过程文档。
+- 大型改动：跨包、改变架构边界、引入新产品能力或存在不可逆决策。才需要设计说明和阶段计划，并只在关键决策点请求确认。
 
-如果任务涉及 Agent、Workflow、中文网文生成、章节正文、章纲、大纲、评审、记忆、检索或写作素材包，还必须先阅读：
+用户已经明确目标时，不要为了流程再次要求确认。只有存在高风险歧义、破坏性操作或无法从项目中推断的产品决策时才提问。
 
-- `docs/research/external-learning-sources.md`
+### 按需阅读
 
-然后按索引阅读相关调研记录和 `external/learning-sources/` 下的本地学习源。优先吸收架构、流程、模块边界、检索方法、质量评审思路、优秀 Prompt 的组织方式和文本结构模式；内化时必须改写成项目自有表达，未经授权确认，不要复制或近似复刻外部仓库中的长文本语料、示例正文、大段 Prompt 或受许可证限制的源码。
+- 所有任务先读 `AGENTS.md` 和目标文件。
+- 产品边界不明确时读总 PRD或对应专项 PRD。
+- 涉及系统分层时读 `docs/architecture/system-architecture.md`。
+- 涉及 Agent 或 Workflow 时读 `docs/ai/agent-architecture.md`；只有需要运行层细节时再读 Agent 层技术方案。
+- 涉及外部学习源、写作素材、Prompt 方法或网文专项能力时，才读 `docs/research/external-learning-sources.md` 及其指向的资料。
+- 不要求每次开发预读全部 PRD 和架构文档。
+
+外部方法内化时必须改写成项目自有表达，未经授权确认，不要复制或近似复刻外部仓库中的长文本语料、示例正文、大段 Prompt 或受许可证限制的源码。
+
+### 工具与输出控制
+
+- 搜索先使用精确路径和关键词，优先 `rg`；避免无目的地读取整个目录或整份长文档。
+- 单次命令只输出解决当前问题所需内容，使用路径过滤、行号范围和结果数量限制。
+- 不重复运行能证明同一结论的命令；验证失败后才扩大排查范围。
+- `git status`、全仓搜索和完整 diff 只在确有必要时运行，并优先限制到目标路径。
+- 中间更新保持简短，只报告新发现、风险或下一步，不复述已知背景。
+
+### 验证约定
+
+- 本项目后续不新增、修改、补写或运行任何单元测试，也不执行以单元测试为目的的 TDD 流程。
+- 不运行现有 `*.test.ts`、`*.spec.ts` 或包内测试脚本。
+- 默认验证方式为：静态检查、TypeScript 类型检查、构建检查、目标命令或 CLI 的一次手工冒烟验证。
+- 验证规模与改动风险匹配。文案和纯文档改动只做格式、链接和一致性检查。
+- 不为了“更完整”重复执行类型检查、构建和冒烟验证；选择能够覆盖改动的最小组合。
 
 新增代码时优先保持模块边界：
 

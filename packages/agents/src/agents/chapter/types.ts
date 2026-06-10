@@ -13,6 +13,7 @@ export interface ChapterPlanInput {
   novelId: string;
   chapterNo: number;
   title: string;
+  volumeId?: string;
   volumeTitle: string;
   objective: string;
   hook: string;
@@ -60,11 +61,24 @@ export interface NeighborChapterPlanInput {
   status?: string;
 }
 
+export interface ChapterContextWindowItem {
+  chapterNo: number;
+  title: string;
+  summary?: string;
+  content?: string;
+  endingHook?: string;
+  endingExcerpt?: string;
+  status?: string;
+}
+
 export interface ChapterContextPackage {
   outlineSummary?: string;
   volumeGoal?: string;
   previousChapterSummary?: string;
+  previousChapterEnding?: string;
+  previousChapters?: ChapterContextWindowItem[];
   nextChapterObjective?: string;
+  nextChapters?: ChapterContextWindowItem[];
   nearbyChapterPlans?: NeighborChapterPlanInput[];
   characterStates?: ChapterCharacterStateInput[];
   worldRules?: string[];

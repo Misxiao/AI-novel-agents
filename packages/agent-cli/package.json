@@ -4,17 +4,22 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "ai-novel-agent": "./dist/index.js"
+    "ai-novel-agent": "./dist/agent-cli/src/index.js"
   },
   "scripts": {
     "demo": "tsx src/index.ts",
+    "demo:preflight": "tsx src/novelPreflightPreset.ts",
+    "demo:revise-outline": "tsx src/outlineRevisionPreset.ts",
     "test:write-workflow": "tsx src/writeWorkflowPreset.ts",
     "typecheck": "tsc --noEmit --pretty false",
     "build": "tsc"
   },
   "dependencies": {
     "@ai-novel-agents/agents": "workspace:*",
-    "@ai-novel-agents/workflow": "workspace:*"
+    "@ai-novel-agents/db": "workspace:*",
+    "@ai-novel-agents/repositories": "workspace:*",
+    "@ai-novel-agents/workflow": "workspace:*",
+    "better-sqlite3": "^12.10.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",

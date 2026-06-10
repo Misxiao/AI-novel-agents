@@ -228,18 +228,29 @@ export async function runWriteNextChapterWorkflow(
     finishedAt: lastChapterRun.finishedAt,
   };
 
-  return {
-    task: {
+  const task = {
       taskId: `task-write-next-chapter-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       novelId: input.novelId,
       title: `写下一章：第 ${chapterPlan.chapterNo} 章`,
-      workflowName: "write-next-chapter",
-      status: "succeeded",
+      workflowName: "write-next-chapter" as const,
+      status: "succeeded" as const,
       inputSnapshot: buildInputSnapshot(input, chapterPlan),
       outputSnapshot: buildOutputSnapshot(chapterPlan, bestDraft, bestReview, revisionHistory.length),
       startedAt,
       finishedAt,
-    },
+    };
+  repository.saveChapterDraft?.({
+    novelId: input.novelId,
+    chapterNo: chapterPlan.chapterNo,
+    title: bestDraft.title,
+    summary: bestDraft.summary,
+    content: bestDraft.content,
+    endingHook: chapterPlan.hook,
+  });
+  repository.saveTask?.(task);
+
+  return {
+    task,
     chapterPlan,
     generatedChapterPlan,
     draftPlan: draftPlanResult.output,

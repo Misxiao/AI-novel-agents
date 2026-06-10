@@ -6,9 +6,9 @@
 
 后续 AI 或开发者接手本项目时，必须先理解以下边界：
 
-1. 前端只展示业务能力和任务入口，不展示 Agent、Prompt、Skill 或 LangGraph 节点配置。
+1. 前端只展示业务能力和任务入口，不展示 Agent、Prompt、Skill 或 Workflow 内部步骤配置。
 2. API 只负责请求校验、任务创建、服务组合和进度推送，不直接拼接复杂 Prompt。
-3. Agent 层通过内置 capability 执行业务能力，LangGraph 工作流调用 capability，而不是绕过 Agent 写业务逻辑。
+3. Workflow 层通过项目自有 TypeScript 编排串联 Agent capability，不使用 LangGraph.js，也不绕过 Agent 写业务逻辑。
 4. 记忆、检索、章节、角色、伏笔、评审和任务都必须绑定 `novelId`。
 5. 本地文件和数据库负责沉淀全部资产，RAG 只是检索层，不是权威存储层。
 
@@ -18,8 +18,7 @@
 flowchart TD
   Web["apps/web\nVite + React\n业务页面与任务入口"] --> API["apps/api\nFastify\nHTTP / SSE"]
   API --> Workflow["packages/workflow\n任务、状态、重试、恢复"]
-  Workflow --> Graphs["packages/agents/src/graphs\nLangGraph 工作流"]
-  Graphs --> Runtime["packages/agents/src/runtime\nAgent Harness"]
+  Workflow --> Runtime["packages/agents\nAgent capability / runtime"]
   Runtime --> Registry["Agent Registry\nAgent + Capability"]
   Runtime --> Context["Context Assembler\n上下文装配"]
   Context --> Memory["packages/memory\n小说独立记忆"]
@@ -40,7 +39,7 @@ MVP 可以先用内存任务与本地 mock 资产跑通闭环，但结构上仍�
 ```txt
 大纲页点击“生成第一卷规划”
 -> POST /api/novels/:novelId/outlines/generate-first
--> API 创建或执行 outline-planning-graph 任务
+-> API 创建或执行 outline-planning 任务
 -> Agent 层完成大纲生成、结构审查和章纲草案输出
 -> 前端展示任务结果和待确认草案
 ```
@@ -59,7 +58,7 @@ MVP 可以先用内存任务与本地 mock 资产跑通闭环，但结构上仍�
 - Prompt 正文。
 - Skill 模块配置。
 - 工具权限配置。
-- LangGraph 节点图编辑器。
+- Workflow 内部步骤编辑器。
 - Agent 角色配置。
 
 ## 4. API 与任务边界
@@ -86,7 +85,7 @@ GET  /api/tasks/:taskId/events
 ```txt
 POST /api/novels/:novelId/tasks
 {
-  "workflowName": "outline-planning-graph",
+  "workflowName": "outline-planning",
   "intent": "generateFirstOutline",
   "input": {}
 }
@@ -227,20 +226,20 @@ apps/web 大纲页
 -> POST /api/novels/:novelId/outlines/generate-first
 -> apps/api Fastify
 -> packages/agents runtime
--> outline-planning-graph 蓝图
+-> outline-planning 自有 Workflow
 -> webnovelSkill 路由 outline
 -> packages/llm 真实模型调用
 -> 返回总纲、第一卷规划、前 10 章章纲、时间线、伏笔和结构问题
 -> 前端刷新大纲驾驶舱
 ```
 
-这条链路目前用于验证真实模型调用和前后端闭环。后续应把内存结果落入 `packages/db` 和 `packages/workflow`，并补充 SSE 任务进度。
+这条链路目前用于验证真实模型调用和前后端闭环。后续较长时间的重心转向 Agent 底层能力：先让 Workflow、章节资产、AgentRun 和小说记忆在包内独立跑稳，再单独规划 Web/API 接入。
 
 ## 10. 后续实现顺序
 
-1. 将首次大纲生成结果写入 SQLite，而不是只保留在内存和前端状态。
-2. 建立 `WorkflowTask` repository 和 Agent run 记录。
-3. 把大纲生成迁入正式 `outline-planning-graph` LangGraph 实现。
-4. 增加 SSE 事件流。
-5. 增加 `ContextAssembler` 的结构化读取、FTS 检索和 token 压缩。
-6. 增加章节生产闭环：`memory.retrieveContext -> prose.draftChapter -> review.reviewChapter -> prose.reviseChapter -> review.reviewConsistency -> memory.updateNovelMemory`。
+1. 完成章节草稿、评审报告、修订历史、质量门禁和 AgentRun 的持久化。
+2. 增加人工确认点：未确认草稿不得写入 canon。
+3. 建立最小小说记忆更新：章节摘要、canon facts、角色状态变化和伏笔状态变化。
+4. 增强 `ContextAssembler` / repository 的结构化读取、FTS 检索和 token 压缩。
+5. 让下一章生产读取上一章摘要、已确认事实、近邻章纲和伏笔账本。
+6. 包内验证稳定后，再规划 Web/API 接入、SSE 事件流和任务中心展示。

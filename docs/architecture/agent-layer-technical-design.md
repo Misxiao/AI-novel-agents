@@ -6,7 +6,7 @@ Agent 层是本项目的创作能力核心，负责把小说资产、上下文�
 
 本方案的目标不是把 Agent 做成前端可配置平台，而是建立一套稳定的工程边界：
 
-1. 前端只触发业务任务，不理解 Agent、Prompt、Skill 或 LangGraph 节点。
+1. 前端只触发业务任务，不理解 Agent、Prompt、Skill 或 Workflow 内部步骤。
 2. API 只负责请求校验、任务创建、进度推送和服务组合，不直接拼接复杂 prompt。
 3. Workflow 负责任务生命周期、恢复、重试和人工确认点。
 4. Agent 层负责 capability 执行、上下文装配、模型调用、工具调用、结构化输出和运行记录。
@@ -18,13 +18,12 @@ Agent 层是本项目的创作能力核心，负责把小说资产、上下文�
 apps/web
   -> apps/api
     -> packages/workflow
-      -> packages/agents/src/graphs
-        -> packages/agents/src/runtime
-          -> packages/agents/src/capabilities
-            -> packages/agents/src/webnovelSkill
-            -> packages/memory
-            -> packages/llm
-            -> ToolRuntime / MCP
+      -> packages/agents
+        -> Agent capability / Agent 类
+        -> packages/agents/src/webnovelSkill
+        -> packages/memory
+        -> packages/llm
+        -> ToolRuntime / MCP
 ```
 
 Agent 层内部建议按以下职责分开：
@@ -35,7 +34,7 @@ packages/agents/
     core/              # Agent、Capability、运行事件和契约类型
     agents/            # 七类顶层 Agent 的静态定义
     capabilities/      # 各 capability 的实际执行逻辑，后续新增
-    graphs/            # LangGraph 工作流定义和节点编排
+    workflows/         # 可选：Agent 包内局部链路定义；核心编排优先放在 packages/workflow
     runtime/           # AgentHarness、ContextAssembler、ToolRuntime 等运行时
     schemas/           # 输入输出 Zod schema 或等价结构化 schema，后续新增
     webnovelSkill/     # 中文网文专项模块路由、模块定义和链路规则
@@ -43,7 +42,7 @@ packages/agents/
     webnovel-skill/    # 内置素材包、模块索引、授权来源索引
 ```
 
-`capabilities/`、`schemas/` 和通用 `runtime/` 已作为 Agent 层基础结构落地。现有 `runtime/outlineFirstGeneration.ts` 保留为兼容 facade，内部转调 `outlinePlanning` LangGraph；首次大纲生成的实际能力位于 `capabilities/outline/generateBookOutline.ts`。
+`capabilities/`、`schemas/` 和通用 `runtime/` 是 Agent 层目标结构。当前代码已有章节 Agent、评审 Agent、规划 Agent 和 `packages/workflow` 中的章节生产链路；后续应沿用自有 Workflow 模式继续拆分和沉淀能力。
 
 ## 3. 调用关系
 
@@ -53,8 +52,8 @@ packages/agents/
 前端业务动作
 -> API 校验 novelId 和请求体
 -> WorkflowRunner 创建 WorkflowTask
--> Graph Runner 执行 LangGraph 工作流
--> AgentHarness.invoke(capabilityId, input)
+-> 自有 Workflow Runner 执行显式步骤
+-> AgentHarness.invoke(capabilityId, input) 或直接调用稳定 Agent 类
 -> ContextAssembler 读取资产、记忆、素材和检索结果
 -> Capability 编译 prompt / 工具计划
 -> LLM Provider 或 ToolRuntime / MCP
@@ -89,7 +88,7 @@ Capability 不应直接覆盖正式资产。正式写库由 Workflow 或 Reposit
 
 依赖规则：
 
-- 可以被 `agents/`、`graphs/`、`runtime/`、`capabilities/` 引用。
+- 可以被 `agents/`、`runtime/`、`capabilities/` 和 `packages/workflow` 引用。
 - 不应引用具体 Agent 实现之外的业务运行逻辑。
 - 不应依赖 `packages/llm`、`packages/db` 或 `apps/*`。
 
@@ -128,7 +127,7 @@ Capability 不应直接覆盖正式资产。正式写库由 Workflow 或 Reposit
 
 职责：
 
-- 每个 capability 一个可测试的执行单元。
+- 每个 capability 一个可独立执行和验证的能力单元。
 - 接收 `AgentInvocationContext`，返回结构化草案、补丁、评审报告或工具请求。
 - 只处理该 capability 的业务逻辑，不管理任务生命周期。
 
@@ -172,15 +171,15 @@ src/capabilities/
 - 将 `runtime/outlineFirstGeneration.ts` 中的 prompt 编译、模型调用、输出解析和 normalize 逻辑逐步拆入 `capabilities/outline/generateBookOutline.ts`。
 - `runtime` 只保留通用执行器，不保留具体业务能力实现。
 
-### 4.4 `src/graphs`
+### 4.4 Workflow 编排
 
-`graphs` 是工作流编排层，后续承载 LangGraph.js 实现。
+核心工作流编排层位于 `packages/workflow`，不再使用 LangGraph.js。
 
 职责：
 
 - 定义业务工作流的节点顺序、条件分支、失败处理和人工确认点。
 - 节点只调用 Agent capability，不绕过 Agent 直接写业务逻辑。
-- 将多步骤任务编排成可恢复的图。
+- 将多步骤任务编排成可追踪、可恢复的 TypeScript 流程。
 
 核心图：
 
@@ -217,6 +216,26 @@ memory.retrieveContext
 -> waiting_for_user
 ```
 
+当前已经实现的大纲修改图：
+
+```txt
+repository.resolveOutlineSource
+-> outline.reviseMasterOutline / outline.reviseVolumeOutline
+-> workflow.applyOutlineRevisionPolicy
+-> review.reviewOutlineRevision
+-> repository.saveOutlineVersion
+-> waiting_for_user
+```
+
+`applyOutlineRevisionPolicy` 是确定性结构保护层，负责：
+
+- 为旧章纲按卷标题补齐稳定 `volumeId`。
+- 禁止删除、迁移或重新编号已有已确认章节。
+- 禁止卷纲修改越权影响总纲或其他卷。
+- 按候选卷顺序连续重排未确认章纲，同时保留章纲 ID。
+- 在固定章节编号之间无法维持顺序时生成 critical 冲突。
+- 根据结构冲突和评审分数把候选版本标记为“待确认”或“需修订”。
+
 依赖规则：
 
 - 可以引用 `core`、`runtime`、`capabilities`。
@@ -226,8 +245,9 @@ memory.retrieveContext
 
 当前建议：
 
-- 现有 `graphs/*/index.ts` 仍是蓝图，保留。
-- 后续每个图增加 `definition.ts`、`state.ts`、`nodes.ts`，避免一个文件承载全部逻辑。
+- 以 `packages/workflow/src/writeNextChapter.ts` 的显式编排方式为当前开发模式。
+- 后续新增 `outlinePlanning`、`memoryUpdate` 等 Workflow 时，优先使用普通 TypeScript 函数、状态对象和注入式 repository/model。
+- 不新增 LangGraph 节点、checkpointer 或 graph runner。
 
 ### 4.5 `src/runtime`
 
@@ -301,7 +321,7 @@ src/schemas/
 
 依赖规则：
 
-- 可以被 `capabilities`、`runtime`、`graphs`、测试引用。
+- 可以被 `capabilities`、`runtime` 和 `packages/workflow` 引用。
 - 不调用 LLM、数据库或工具。
 
 关键要求：
@@ -485,7 +505,7 @@ Agent Harness 需要支持以下能力：
 2. 统一 LLM 调用审计。
 3. 统一错误分类：配置错误、供应商错误、schema 错误、工具错误、guardrail 错误。
 4. 统一事件流：开始、上下文装配完成、模型调用开始、模型调用完成、解析完成、评审完成、等待用户确认、失败。
-5. 支持测试替身：FakeModel、FakeContextAssembler、FakeToolRuntime。
+5. 支持本地替身：FakeModel、FakeContextAssembler、FakeToolRuntime，用于 CLI 手工验证和离线调试。
 6. 支持离线 golden fixture：同一输入和上下文下比较结构化输出形态。
 
 推荐接口形态：
@@ -508,14 +528,14 @@ AgentHarness.invoke({
 
 - `core` 已经有 Agent 和 capability 类型。
 - `agents` 已经按七类顶层 Agent 分好。
-- `graphs` 已经有工作流蓝图和最小 `outlinePlanning` LangGraph。
+- `packages/workflow` 已经有最小章节生产 Workflow。
 - `webnovelSkill` 已经有模块路由和链路定义。
 - `runtime/outlineFirstGeneration.ts` 已经转为兼容 facade。
 - `capabilities`、`schemas`、`runtime/harness` 已经落地。
 
 主要问题：
 
-1. 目前只有 `outlinePlanning` 落地为真实 LangGraph，其它图仍是蓝图。
+1. 章节生产 Workflow 已有纵切，但章节资产、评审报告、修订历史和记忆更新尚未形成完整持久化闭环。
 2. AgentRun 持久化尚未接入数据库，当前通过 `RunRecorder` 接口抽象。
 3. ToolRuntime / MCP 只保留接口，尚未接真实工具。
 4. 外部素材授权检索尚未接入 ContextAssembler。
@@ -523,18 +543,19 @@ AgentHarness.invoke({
 建议演进顺序：
 
 ```txt
-第一步：为 proseProduction / chapterReview / memoryUpdate 补真实 LangGraph。
+第一步：完成确认后的章节资产与小说记忆闭环。
 第二步：将 AgentRun 通过 RunRecorder 接入数据库持久化。
 第三步：让 ContextAssembler 接入小说资产 repository、FTS/向量检索和素材授权过滤。
 第四步：将 ToolRuntime 接入 MCP 或内部工具注册表。
-第五步：补充 fake model 单元测试和 graph 级集成测试。
+第五步：补充 fake model CLI 冒烟入口和 Workflow 状态检查命令。
 ```
 
 ## 10. 文档分布建议
 
-当前阶段建议保留两类文档：
+当前阶段建议保留以下文档入口：
 
-- `docs/architecture/agent-layer-technical-design.md`：架构级方案和边界，供产品、架构和后续开发者阅读。
+- `docs/README.md`：项目文档索引和权威来源说明。
+- `docs/architecture/agent-layer-technical-design.md`：架构级方案和边界，供架构和后续开发者阅读。
 - `packages/agents/README.md`：包内快速索引，供写代码时就近查看。
 
 后续当对应目录实现变复杂时，再增加：
@@ -542,7 +563,7 @@ AgentHarness.invoke({
 ```txt
 packages/agents/src/runtime/README.md
 packages/agents/src/webnovelSkill/README.md
-packages/agents/src/graphs/README.md
+packages/workflow/README.md
 packages/agents/src/capabilities/README.md
 ```
 

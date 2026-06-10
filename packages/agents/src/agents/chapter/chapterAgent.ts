@@ -506,6 +506,7 @@ function collectUsedContextRefs(context?: ChapterContextPackage): ChapterContext
   addContextRef(refs, Boolean(context?.outlineSummary?.trim()), "context:outline", "outline", "总纲摘要");
   addContextRef(refs, Boolean(context?.volumeGoal?.trim()), "context:volume", "volume", "分卷目标");
   addContextRef(refs, Boolean(context?.previousChapterSummary?.trim()), "context:previous-chapter", "chapter", "上一章摘要");
+  addContextRef(refs, Boolean(context?.previousChapterEnding?.trim()), "context:previous-chapter-ending", "chapter", "上一章结尾");
   addContextRef(refs, Boolean(context?.nextChapterObjective?.trim()), "context:next-chapter", "chapter", "下一章目标");
   addContextRef(refs, Boolean(context?.styleGuidance?.length), "context:style", "style", "风格约束");
   addContextRef(refs, Boolean(context?.worldRules?.length), "context:world-rules", "world_rule", "世界观硬规则");
@@ -518,6 +519,10 @@ function collectUsedContextRefs(context?: ChapterContextPackage): ChapterContext
 
   for (const item of context?.foreshadowing ?? []) {
     addContextRef(refs, true, `foreshadowing:${item.id}`, "foreshadowing", item.title);
+  }
+
+  for (const chapter of [...(context?.previousChapters ?? []), ...(context?.nextChapters ?? [])]) {
+    addContextRef(refs, true, `chapter-window:${chapter.chapterNo}`, "chapter", `第 ${chapter.chapterNo} 章：${chapter.title}`);
   }
 
   return Array.from(new Map(refs.map((ref) => [ref.id, ref])).values());

@@ -137,16 +137,16 @@ MVP 不做以下能力：
 
 这些 Agent 的配置不在前端暴露。
 
-### 6.4 LangGraph 工作流
+### 6.4 项目自有 Workflow
 
-系统必须使用 LangGraph.js 表达核心工作流。MVP 至少包含：
+系统必须使用项目内自有 TypeScript Workflow 层表达核心工作流，不再使用 LangGraph.js。MVP 至少包含：
 
-- `novel-intake-graph`。
-- `outline-planning-graph`。
-- `chapter-production-graph`。
-- `chapter-review-graph`。
-- `chapter-revision-graph`。
-- `memory-update-graph`。
+- `novel-intake`。
+- `outline-planning`。
+- `chapter-production`。
+- `chapter-review`。
+- `chapter-revision`。
+- `memory-update`。
 
 ### 6.5 任务中心
 
@@ -230,7 +230,7 @@ MVP 验收指标：
 | --- | --- | --- |
 | Web 管理平台 | Vite + React | 新建 |
 | API 服务 | Fastify | 新建 |
-| Agent 编排 | LangGraph.js | 新建 |
+| Agent 编排 | 项目自有 TypeScript Workflow | 已采用 |
 | 本地数据库 | SQLite | 新建 |
 | LLM 供应商 | OpenAI-compatible 抽象层 | 预留 |
 | 小说平台阅读数据 | CSV/API 导入 | 后续 |
@@ -239,7 +239,7 @@ MVP 验收指标：
 
 - Web 到 API 的 HTTP 边界。
 - API 到任务运行器的任务边界。
-- 任务运行器到 LangGraph 的 Agent 边界。
+- 任务运行器到 Agent capability 的 Workflow 边界。
 - Agent 到记忆系统的检索与写入边界。
 - Agent 到 LLM 供应商的模型调用边界。
 
@@ -270,7 +270,8 @@ MVP 预期配置：
 | --- | --- | --- |
 | 2026-05-26 | 前端采用 Vite + React | 用户明确指定，适合本地管理平台快速开发 |
 | 2026-05-26 | 后端采用 Fastify | 用户明确指定，适合 Node.js API 服务 |
-| 2026-05-26 | Agent 编排采用 LangGraph.js | 用户明确指定，适合有状态、多节点工作流 |
+| 2026-05-26 | Agent 编排曾计划采用 LangGraph.js | 早期方案用于表达有状态、多节点工作流 |
+| 2026-06-05 | 后续不再使用 LangGraph.js，改用项目自有 Workflow | 当前开发模式已经以 TypeScript 显式编排 Agent 能力为主，后续长期聚焦 Agent 底层能力，不引入 LangGraph 复杂度 |
 | 2026-05-26 | 不提供 Agent 配置、Prompt/Skill 管理 UI | 用户明确要求这些能力应内置在项目中 |
 | 2026-05-26 | PRD 存放在 `docs/prds/` | 用户要求不放在 `.codex` 中 |
 
@@ -279,7 +280,7 @@ MVP 预期配置：
 本 PRD 基于当前对话完成一轮 gather-criticize 自检，结论如下：
 
 - Business：已明确 MVP 聚焦多小说管理和章节生产闭环，避免过早扩张到平台发布。
-- Technical：已明确 Vite + React、Fastify、LangGraph.js 和多小说记忆隔离。
+- Technical：已明确 Vite + React、Fastify、项目自有 Workflow 和多小说记忆隔离。
 - Security：已识别本地优先、数据隔离、后续平台数据导入风险；MVP 暂不做平台账号接入。
 - Edge Case：已覆盖任务失败、记忆串用、多小说并行、后续阅读数据接入边界。
 
@@ -288,4 +289,3 @@ MVP 预期配置：
 - 具体数据库 schema 待技术设计与实现阶段细化。
 - 首批 LLM Provider 优先级待实现前确认。
 - 阅读数据平台清单待后续产品阶段确认。
-

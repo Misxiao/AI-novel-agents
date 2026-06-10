@@ -6,6 +6,15 @@ import type {
 } from "../../core/types.js";
 import { BaseAgent, type BaseAgentRuntime } from "../../core/baseAgent.js";
 import type { ChapterContextReference } from "../chapter/types.js";
+import type {
+  PreflightAssetKind,
+  PreflightReviewIssue,
+  PreflightReviewOutput,
+  ReviewFoundationInput,
+  ReviewOutlineInput,
+  ReviewOutlineRevisionInput,
+  ReviewSettingInput,
+} from "../preflight/types.js";
 import {
   type ChapterReviewIssue,
   type ChapterReviewJsonPayload,
@@ -14,6 +23,11 @@ import {
   type ReviewChapterInput,
 } from "./types.js";
 import { buildReviewChapterMessages } from "./prompts/reviewChapterPrompt.js";
+import {
+  buildReviewPreflightMessages,
+  type PreflightReviewInput,
+} from "./prompts/reviewPreflightPrompt.js";
+import { buildReviewOutlineRevisionMessages } from "./prompts/reviewOutlineRevisionPrompt.js";
 
 export type ReviewAgentRuntime = BaseAgentRuntime;
 
@@ -101,6 +115,104 @@ export class ReviewAgent extends BaseAgent {
     };
   }
 
+  async reviewFoundation(
+    input: ReviewFoundationInput,
+  ): Promise<AgentCapabilityResult<PreflightReviewOutput>> {
+    return this.reviewPreflight("foundation", input);
+  }
+
+  async reviewSetting(
+    input: ReviewSettingInput,
+  ): Promise<AgentCapabilityResult<PreflightReviewOutput>> {
+    return this.reviewPreflight("setting", input);
+  }
+
+  async reviewOutline(
+    input: ReviewOutlineInput,
+  ): Promise<AgentCapabilityResult<PreflightReviewOutput>> {
+    return this.reviewPreflight("outline", input);
+  }
+
+  async reviewOutlineRevision(
+    input: ReviewOutlineRevisionInput,
+  ): Promise<AgentCapabilityResult<PreflightReviewOutput>> {
+    assertOutlineRevisionReviewInput(input);
+    const run = await this.completeWithTiming({
+      messages: buildReviewOutlineRevisionMessages(input),
+      temperature: 0.3,
+      topP: 0.8,
+      maxTokens: 2600,
+      responseFormat: "json_object",
+    });
+    const parsed = parsePreflightReviewPayload(run.completion.content);
+    const issues = dedupePreflightIssues([
+      ...normalizePreflightIssues(parsed.issues),
+      ...input.candidate.impactAnalysis.conflicts,
+    ]);
+    const score = normalizeScore(parsed.overallScore, issues);
+    const hasCritical = issues.some((issue) => issue.severity === "critical");
+    return {
+      output: {
+        reviewId: `review-outline-revision-${input.novelId}-${this.createSuffix()}`,
+        novelId: input.novelId,
+        assetKind: "outline",
+        passed: Boolean(parsed.passed) && score >= DEFAULT_QUALITY_THRESHOLD && !hasCritical,
+        overallScore: score,
+        summary: normalizeOptionalText(parsed.summary) || "已完成大纲修改候选评审。",
+        strengths: normalizeStringArray(parsed.strengths),
+        issues,
+        requiredRevisionInstruction: normalizeOptionalText(parsed.requiredRevisionInstruction)
+          || buildPreflightRevisionInstruction(issues),
+        warnings: normalizeStringArray(parsed.warnings),
+        provider: run.completion.provider,
+        model: run.completion.model,
+        createdAt: run.finishedAt,
+      },
+      run: buildRunMeta(this.id, "review.reviewOutlineRevision", run),
+    };
+  }
+
+  private async reviewPreflight(
+    kind: PreflightAssetKind,
+    input: PreflightReviewInput,
+  ): Promise<AgentCapabilityResult<PreflightReviewOutput>> {
+    assertPreflightReviewInput(kind, input);
+    const run = await this.completeWithTiming({
+      messages: buildReviewPreflightMessages(kind, input),
+      temperature: 0.32,
+      topP: 0.82,
+      maxTokens: 2400,
+      responseFormat: "json_object",
+    });
+    const parsed = parsePreflightReviewPayload(run.completion.content);
+    const issues = dedupePreflightIssues([
+      ...normalizePreflightIssues(parsed.issues),
+      ...buildPreflightDeterministicIssues(kind, input),
+    ]);
+    const score = normalizeScore(parsed.overallScore, issues);
+    const hasCritical = issues.some((issue) => issue.severity === "critical");
+
+    return {
+      output: {
+        reviewId: `review-${kind}-${input.novelId}-${this.createSuffix()}`,
+        novelId: input.novelId,
+        assetKind: kind,
+        passed: Boolean(parsed.passed) && score >= DEFAULT_QUALITY_THRESHOLD && !hasCritical,
+        overallScore: score,
+        summary: normalizeOptionalText(parsed.summary) || `已完成${kind}草案评审。`,
+        strengths: normalizeStringArray(parsed.strengths),
+        issues,
+        requiredRevisionInstruction: normalizeOptionalText(parsed.requiredRevisionInstruction)
+          || buildPreflightRevisionInstruction(issues),
+        warnings: normalizeStringArray(parsed.warnings),
+        provider: run.completion.provider,
+        model: run.completion.model,
+        createdAt: run.finishedAt,
+      },
+      run: buildRunMeta(this.id, `review.review${capitalizeKind(kind)}`, run),
+    };
+  }
+
   private async completeWithTiming(input: ChatCompletionInput): Promise<CompletionWithTiming> {
     const model = await this.getModel();
     const startedAt = this.getNow().toISOString();
@@ -126,6 +238,50 @@ export const reviewChapterCapability: AgentCapability<
   },
 };
 
+export const reviewFoundationCapability: AgentCapability<
+  ReviewFoundationInput,
+  PreflightReviewOutput
+> = {
+  id: "review.reviewFoundation",
+  description: "评审小说基础盘草案。",
+  async run(input, runtime) {
+    return new ReviewAgent(runtime).reviewFoundation(input);
+  },
+};
+
+export const reviewSettingCapability: AgentCapability<
+  ReviewSettingInput,
+  PreflightReviewOutput
+> = {
+  id: "review.reviewSetting",
+  description: "评审小说设定草案。",
+  async run(input, runtime) {
+    return new ReviewAgent(runtime).reviewSetting(input);
+  },
+};
+
+export const reviewOutlineCapability: AgentCapability<
+  ReviewOutlineInput,
+  PreflightReviewOutput
+> = {
+  id: "review.reviewOutline",
+  description: "评审小说初始大纲草案。",
+  async run(input, runtime) {
+    return new ReviewAgent(runtime).reviewOutline(input);
+  },
+};
+
+export const reviewOutlineRevisionCapability: AgentCapability<
+  ReviewOutlineRevisionInput,
+  PreflightReviewOutput
+> = {
+  id: "review.reviewOutlineRevision",
+  description: "评审大纲修改候选的范围控制、结构一致性和可生产性。",
+  async run(input, runtime) {
+    return new ReviewAgent(runtime).reviewOutlineRevision(input);
+  },
+};
+
 function assertReviewInput(input: ReviewChapterInput) {
   if (!input.novel.novelId.trim()) {
     throw new Error("novelId 不能为空");
@@ -146,6 +302,162 @@ function assertReviewInput(input: ReviewChapterInput) {
   if (!input.draft.content.trim()) {
     throw new Error("draft.content 不能为空");
   }
+}
+
+interface PreflightReviewJsonPayload {
+  passed?: boolean;
+  overallScore?: number;
+  summary?: string;
+  strengths?: string[];
+  issues?: Array<Partial<PreflightReviewIssue>>;
+  requiredRevisionInstruction?: string;
+  warnings?: string[];
+}
+
+function parsePreflightReviewPayload(content: string): PreflightReviewJsonPayload {
+  try {
+    const parsed = JSON.parse(stripCodeFence(content)) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as PreflightReviewJsonPayload
+      : {};
+  } catch {
+    return {
+      passed: false,
+      overallScore: 60,
+      summary: "模型响应不可解析，前置资产需要重新评审。",
+      issues: [{
+        id: "preflight-review-json",
+        severity: "critical",
+        category: "response_format",
+        description: "评审模型未返回合法 JSON。",
+        suggestion: "重新运行评审，确认结构化输出可解析。",
+      }],
+      warnings: ["模型响应不是合法 JSON。"],
+    };
+  }
+}
+
+function assertPreflightReviewInput(
+  kind: PreflightAssetKind,
+  input: PreflightReviewInput,
+) {
+  if (!input.novelId.trim()) {
+    throw new Error("novelId 不能为空");
+  }
+  if (input.draft.novelId !== input.novelId) {
+    throw new Error(`${kind} draft.novelId 与 novelId 不一致`);
+  }
+  if ("foundation" in input && input.foundation.novelId !== input.novelId) {
+    throw new Error("foundation.novelId 与 novelId 不一致");
+  }
+  if ("setting" in input && input.setting.novelId !== input.novelId) {
+    throw new Error("setting.novelId 与 novelId 不一致");
+  }
+}
+
+function assertOutlineRevisionReviewInput(input: ReviewOutlineRevisionInput) {
+  if (!input.novelId.trim()) {
+    throw new Error("novelId 不能为空");
+  }
+  if (
+    input.foundation.novelId !== input.novelId
+    || input.setting.novelId !== input.novelId
+    || input.sourceOutline.novelId !== input.novelId
+    || input.candidate.revisedOutline.novelId !== input.novelId
+  ) {
+    throw new Error("大纲修改评审输入的 novelId 不一致");
+  }
+  if (input.scope === "volume" && !input.targetVolumeId?.trim()) {
+    throw new Error("卷纲修改评审缺少 targetVolumeId");
+  }
+}
+
+function normalizePreflightIssues(value: unknown): PreflightReviewIssue[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item, index) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+    const candidate = item as Partial<PreflightReviewIssue>;
+    const description = normalizeOptionalText(candidate.description);
+    if (!description) {
+      return [];
+    }
+    return [{
+      id: normalizeOptionalText(candidate.id) || `preflight-issue-${index + 1}`,
+      severity: candidate.severity === "critical" || candidate.severity === "info"
+        ? candidate.severity
+        : "warning",
+      category: normalizeOptionalText(candidate.category) || "structure",
+      description,
+      suggestion: normalizeOptionalText(candidate.suggestion) || "补充信息后重新评审。",
+    }];
+  });
+}
+
+function buildPreflightDeterministicIssues(
+  kind: PreflightAssetKind,
+  input: PreflightReviewInput,
+): PreflightReviewIssue[] {
+  const issues: PreflightReviewIssue[] = [];
+  if (kind === "foundation") {
+    const draft = (input as ReviewFoundationInput).draft;
+    if (!draft.mainConflict.trim()) {
+      issues.push(preflightIssue("foundation-main-conflict", "main_conflict", "基础盘缺少主冲突。"));
+    }
+    if (!draft.storyEngine.trim()) {
+      issues.push(preflightIssue("foundation-story-engine", "story_engine", "基础盘缺少可持续故事引擎。"));
+    }
+  }
+  if (kind === "setting") {
+    const draft = (input as ReviewSettingInput).draft;
+    if (draft.worldRules.length === 0) {
+      issues.push(preflightIssue("setting-world-rules", "world_rules", "设定草案缺少世界硬规则。"));
+    }
+    if (draft.characterSeeds.length === 0) {
+      issues.push(preflightIssue("setting-characters", "characters", "设定草案缺少核心角色。"));
+    }
+  }
+  if (kind === "outline") {
+    const draft = (input as ReviewOutlineInput).draft;
+    if (draft.volumes.length === 0) {
+      issues.push(preflightIssue("outline-volumes", "volumes", "大纲草案缺少分卷规划。"));
+    }
+    if (draft.chapterPlans.length < 10) {
+      issues.push(preflightIssue("outline-chapter-plans", "chapter_plans", "首批章纲少于 10 章。"));
+    }
+  }
+  return issues;
+}
+
+function preflightIssue(
+  id: string,
+  category: string,
+  description: string,
+): PreflightReviewIssue {
+  return {
+    id,
+    severity: "critical",
+    category,
+    description,
+    suggestion: "补齐该资产后重新运行评审。",
+  };
+}
+
+function dedupePreflightIssues(issues: PreflightReviewIssue[]) {
+  return Array.from(new Map(issues.map((issue) => [issue.id, issue])).values());
+}
+
+function buildPreflightRevisionInstruction(issues: PreflightReviewIssue[]) {
+  return issues.length === 0
+    ? ""
+    : issues.map((issue) => `${issue.description}${issue.suggestion}`).join("\n");
+}
+
+function capitalizeKind(kind: PreflightAssetKind) {
+  return kind === "foundation" ? "Foundation" : kind === "setting" ? "Setting" : "Outline";
 }
 
 function parseReviewPayload(content: string): ChapterReviewJsonPayload {
@@ -347,7 +659,10 @@ function dedupeIssues(issues: ChapterReviewIssue[]) {
   return Array.from(new Map(issues.map((issue) => [issue.id, issue])).values());
 }
 
-function normalizeScore(value: unknown, issues: ChapterReviewIssue[]) {
+function normalizeScore(
+  value: unknown,
+  issues: Array<{ severity: "info" | "warning" | "critical" }>,
+) {
   const numeric = typeof value === "number" && Number.isFinite(value) ? value : 70;
   const bounded = Math.max(0, Math.min(100, Math.round(numeric)));
   if (issues.some((issue) => issue.severity === "critical") && bounded > 84) {

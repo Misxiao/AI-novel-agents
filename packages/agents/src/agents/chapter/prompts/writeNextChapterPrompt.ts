@@ -217,13 +217,34 @@ function renderContext(context?: ChapterContextPackage) {
     `总纲摘要：${context?.outlineSummary?.trim() || "暂缺，严格按当前章纲和小说基础生成。"}`,
     `分卷目标：${context?.volumeGoal?.trim() || "暂缺，严格按当前章纲推进。"}`,
     `上一章摘要：${context?.previousChapterSummary?.trim() || "暂缺，把本章写成可自然开启的章节。"}`,
+    `上一章结尾片段：${context?.previousChapterEnding?.trim() || "暂缺。"}`,
     `下一章目标：${context?.nextChapterObjective?.trim() || "暂缺，章末只承接当前章纲钩子。"}`,
+    ...renderChapterWindow("前文章节窗口", context?.previousChapters),
+    ...renderChapterWindow("后文章节窗口", context?.nextChapters),
     ...renderList("近邻章纲", context?.nearbyChapterPlans?.map((item) => `第 ${item.chapterNo} 章《${item.title}》：${item.objective}${item.hook ? `；钩子：${item.hook}` : ""}`)),
     ...renderList("角色当前状态", context?.characterStates?.map((item) => `${item.name}：目标=${item.currentGoal || "未提供"}；情绪=${item.emotion || "未提供"}；关系=${item.relationship || "未提供"}；身体=${item.physicalState || "未提供"}；口吻=${item.voice || "未提供"}`)),
     ...renderList("世界观硬规则", context?.worldRules),
     ...renderList("伏笔状态", context?.foreshadowing?.map((item) => `${item.title}（${item.status}）：${item.summary}${item.payoffHint ? `；兑现提示：${item.payoffHint}` : ""}`)),
     ...renderList("Canon 事实", context?.canonFacts),
     ...renderList("检索片段", context?.ragSnippets),
+  ];
+}
+
+function renderChapterWindow(title: string, chapters?: ChapterContextPackage["previousChapters"]) {
+  const normalized = (chapters ?? []).filter((chapter) => chapter.title.trim());
+  if (normalized.length === 0) {
+    return [`${title}：暂缺`];
+  }
+
+  return [
+    `${title}：`,
+    ...normalized.flatMap((chapter) => [
+      `- 第 ${chapter.chapterNo} 章《${chapter.title}》`,
+      `  摘要：${chapter.summary?.trim() || "暂缺"}`,
+      `  章末钩子：${chapter.endingHook?.trim() || "暂缺"}`,
+      `  结尾片段：${chapter.endingExcerpt?.trim() || "暂缺"}`,
+      ...(chapter.content?.trim() ? [`  正文参考：${chapter.content.trim()}`] : []),
+    ]),
   ];
 }
 

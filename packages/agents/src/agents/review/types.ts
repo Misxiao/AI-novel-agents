@@ -8,6 +8,13 @@ import type {
 } from "../chapter/types.js";
 import type { ChapterContextReference } from "../chapter/types.js";
 import type { WebnovelModuleId } from "../../webnovelSkill/types.js";
+export type {
+  PreflightReviewIssue,
+  PreflightReviewOutput,
+  ReviewFoundationInput,
+  ReviewOutlineInput,
+  ReviewSettingInput,
+} from "../preflight/types.js";
 
 export type ChapterReviewSeverity = "info" | "warning" | "critical";
 export type ChapterReviewModuleStatus = "pass" | "warn" | "fail";

@@ -4,7 +4,7 @@
 
 本文档用于指导后续 AI 与开发者实现项目内置 Agent 系统。它定义 Agent 的分工、子能力、文件结构、记忆边界和工作流关系。
 
-本项目不把 Agent 做成前端可配置对象。Agent 是系统内置能力，由代码、文档和测试维护。
+本项目不把 Agent 做成前端可配置对象。Agent 是系统内置能力，由代码和文档维护。
 
 ## 2. 核心原则
 
@@ -52,23 +52,14 @@ packages/agents/src/
     analytics/
       definition.ts
     index.ts
-  graphs/
-    novelIntake/
-      index.ts
-    outlinePlanning/
-      index.ts
-    proseProduction/
-      index.ts
-    chapterReview/
-      index.ts
-    memoryUpdate/
-      index.ts
-    index.ts
   webnovelSkill/
     router.ts
     moduleDefinitions.ts
     chains.ts
     types.ts
+packages/workflow/src/
+  writeNextChapter.ts
+  # 后续继续承载项目自有 Workflow 编排
 ```
 
 ## 5. Agent 与能力模型
@@ -115,6 +106,9 @@ Agent 定义位于 `packages/agents/src/agents/*/definition.ts`。
 
 大纲 Agent 子能力包括：
 
+- `outline.generateInitialOutline`：根据基础盘和设定生成总纲、卷纲和首批章纲。
+- `outline.reviseMasterOutline`：根据自然语言指令生成完整总纲修改候选。
+- `outline.reviseVolumeOutline`：根据自然语言指令生成指定卷纲修改候选。
 - `outline.generateBookOutline`：生成整书大纲。
 - `outline.reviseBookOutline`：修改整书大纲。
 - `outline.generateVolumeOutline`：生成分卷大纲。
@@ -123,6 +117,8 @@ Agent 定义位于 `packages/agents/src/agents/*/definition.ts`。
 - `outline.reviseChapterPlan`：修改单章章纲。
 
 大纲 Agent 不直接写章节正文。章纲一旦被用户确认，可以交由正文 Agent 生成正文。
+
+当前修改能力采用独立版本策略：Agent 只返回完整候选大纲、差异摘要和影响分析；Workflow 负责保护已确认章节、治理章纲编号、调用 `review.reviewOutlineRevision` 并保存待确认版本。任何候选版本在确认前都不得覆盖当前大纲或进入 canon。
 
 ## 8. 推荐工作流
 
@@ -179,9 +175,8 @@ analytics.importReaderData
 
 ## 10. 后续实现要求
 
-- LangGraph 节点应该调用 Agent capability，而不是绕过 Agent 直接写业务逻辑。
+- Workflow 步骤应该调用 Agent capability 或稳定 Agent 类，而不是绕过 Agent 直接写业务逻辑。
 - 每个 capability 的输入输出应逐步升级为 Zod schema 或等价结构化 schema。
 - 所有写入小说资产的能力都必须记录 Agent Run。
 - 需要人工确认的 capability 不得直接覆盖正式资产。
 - 任何跨小说读取必须显式禁止，除非读取的是全局模板或全局素材包。
-

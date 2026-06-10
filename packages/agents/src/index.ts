@@ -1,8 +1,12 @@
 export * from "./core/baseAgent.js";
 export * from "./core/types.js";
 export * from "./agents/chapter/index.js";
+export * from "./agents/inspiration/index.js";
+export * from "./agents/outline/index.js";
 export * from "./agents/plan/index.js";
+export * from "./agents/preflight/types.js";
 export * from "./agents/review/index.js";
+export * from "./agents/setting/index.js";
 export * from "./webnovelSkill/index.js";
 
 export interface GeneratedOutlineResult {
