@@ -3,7 +3,6 @@ export type ChatRole = "system" | "user" | "assistant";
 export interface ChatMessage {
   role: ChatRole;
   content: string;
-  name?: string;
 }
 
 export interface TokenUsage {
@@ -22,7 +21,6 @@ export interface ChatCompletionInput {
 }
 
 export interface ChatCompletionOutput {
-  id?: string;
   provider: string;
   model: string;
   content: string;
@@ -30,11 +28,21 @@ export interface ChatCompletionOutput {
   usage?: TokenUsage;
 }
 
+export type StreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; output: ChatCompletionOutput };
+
 export interface ChatModel {
   provider: string;
   model: string;
   complete(input: ChatCompletionInput): Promise<ChatCompletionOutput>;
+  stream(input: ChatCompletionInput): AsyncIterable<StreamEvent>;
 }
+
+/** 模型档位：plan 做规划/大纲，prose 写正文，review 做评审/记忆提取 */
+export type ModelTier = "plan" | "prose" | "review";
+
+export type ModelRouter = (tier: ModelTier) => ChatModel;
 
 export class LlmConfigurationError extends Error {
   constructor(message: string) {

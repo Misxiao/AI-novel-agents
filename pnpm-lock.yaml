@@ -148,7 +148,17 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/llm: {}
+  packages/llm:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.19
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.3
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   packages/repositories:
     dependencies:
@@ -156,6 +166,25 @@ importers:
         specifier: workspace:*
         version: link:../db
     devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/store:
+    dependencies:
+      better-sqlite3:
+        specifier: ^12.10.0
+        version: 12.10.0
+    devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.12
+        version: 7.6.13
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.19
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.3
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
