@@ -98,23 +98,14 @@ importers:
         specifier: ^6.0.1
         version: 6.4.2(@types/node@22.19.19)(jiti@1.21.7)(tsx@4.22.3)
 
-  packages/agent-cli:
+  packages/agents:
     dependencies:
-      '@ai-novel-agents/agents':
+      '@ai-novel-agents/llm':
         specifier: workspace:*
-        version: link:../agents
-      '@ai-novel-agents/db':
+        version: link:../llm
+      '@ai-novel-agents/store':
         specifier: workspace:*
-        version: link:../db
-      '@ai-novel-agents/repositories':
-        specifier: workspace:*
-        version: link:../repositories
-      '@ai-novel-agents/workflow':
-        specifier: workspace:*
-        version: link:../workflow
-      better-sqlite3:
-        specifier: ^12.10.0
-        version: 12.10.0
+        version: link:../store
     devDependencies:
       '@types/node':
         specifier: ^22.10.1
@@ -125,12 +116,6 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
-
-  packages/agents:
-    dependencies:
-      '@ai-novel-agents/llm':
-        specifier: workspace:*
-        version: link:../llm
 
   packages/db:
     dependencies:
@@ -160,16 +145,6 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/repositories:
-    dependencies:
-      '@ai-novel-agents/db':
-        specifier: workspace:*
-        version: link:../db
-    devDependencies:
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
-
   packages/store:
     dependencies:
       better-sqlite3:
@@ -194,9 +169,22 @@ importers:
       '@ai-novel-agents/agents':
         specifier: workspace:*
         version: link:../agents
-      '@ai-novel-agents/repositories':
+      '@ai-novel-agents/llm':
         specifier: workspace:*
-        version: link:../repositories
+        version: link:../llm
+      '@ai-novel-agents/store':
+        specifier: workspace:*
+        version: link:../store
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.19
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.3
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
 packages:
 

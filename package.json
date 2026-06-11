@@ -7,7 +7,8 @@
     "dev": "pnpm --parallel --filter api --filter web dev",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm --filter \"./packages/**\" typecheck",
+    "test": "pnpm --filter \"./packages/**\" --no-bail test"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
