@@ -11,7 +11,7 @@ export interface GenerateInitialOutlineInput {
   novelId: string;
   foundation: NovelFoundationDraft;
   setting: NovelSettingDraft;
-  chapterPlanCount?: number;
+  volumeCount: number;
 }
 
 export type GenerateInitialOutlineOutput = InitialOutlineDraft;

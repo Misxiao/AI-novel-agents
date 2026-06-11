@@ -2,7 +2,6 @@ import type { ChatMessage } from "../../../core/types.js";
 import type { GenerateInitialOutlineInput } from "../types.js";
 
 export function buildGenerateInitialOutlineMessages(input: GenerateInitialOutlineInput): ChatMessage[] {
-  const chapterPlanCount = Math.min(20, Math.max(10, Math.floor(input.chapterPlanCount ?? 12)));
   return [
     {
       role: "system",
@@ -21,14 +20,19 @@ export function buildGenerateInitialOutlineMessages(input: GenerateInitialOutlin
         `主冲突：${input.foundation.mainConflict}`,
         `故事引擎：${input.foundation.storyEngine}`,
         `目标字数：${input.foundation.targetWords}`,
-        `预计卷数：${input.foundation.estimatedVolumes}`,
+        `用户规划卷数：${input.volumeCount}`,
         `世界背景：${input.setting.background}`,
         `世界规则：${input.setting.worldRules.join("；")}`,
         `角色：${input.setting.characterSeeds.map((item) => `${item.name}(${item.role})`).join("；")}`,
         "",
-        `生成全书粗总纲、所有卷的粗卷纲，以及前 ${chapterPlanCount} 章章纲。`,
-        "输出字段：novelId、masterOutline、volumes、chapterPlans、timelineEvents、foreshadowing、issues、status。",
-        "chapterPlans 每项必须包含 id、novelId、chapterNo、title、volumeId、volumeTitle、objective、hook、status；status 固定为“待确认”。",
+        "生成全书完整故事脉络，以及每一卷的详细规划。",
+        `volumes 必须恰好包含 ${input.volumeCount} 卷，不能根据目标字数增加或减少卷数。`,
+        "每卷必须详细说明：该卷目标、核心冲突、主要阶段、关键转折、角色关系变化、力量体系推进、真相揭示进度、卷末结果和对下一卷的推动。",
+        "不要生成章纲、章节编号、章节范围或任何 chapter 级内容。",
+        "输出字段：novelId、masterOutline、volumes、timelineEvents、foreshadowing、issues、status。",
+        "masterOutline 必须包含 opening、mainGoal、escalation、climax、ending、protagonistArc。",
+        "volumes 每项包含 id、title、goal、conflict、highlights、stages、characterDevelopment、powerSystemProgression、revelations、endingOutcome、nextVolumeHook、status。",
+        "stages 至少列出该卷的开局、发展、重大转折、高潮和收束；characterDevelopment 描述主要人物和关系变化；revelations 描述本卷揭开的真相及仍保留的谜团。",
       ].join("\n"),
     },
   ];

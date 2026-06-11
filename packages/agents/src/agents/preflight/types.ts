@@ -15,9 +15,7 @@ export interface NovelFoundationDraft {
   targetReaders: string;
   tone: string;
   targetWords: number;
-  estimatedChapters: number;
-  estimatedVolumes: number;
-  chapterWordTarget: number;
+  plannedVolumes: number;
   risks: string[];
   questionsForAuthor: string[];
   status: PreflightDraftStatus;
@@ -64,7 +62,13 @@ export interface VolumePlanDraft {
   goal: string;
   conflict: string;
   highlights: string[];
-  chapterRange: string;
+  stages: string[];
+  characterDevelopment: string[];
+  powerSystemProgression: string;
+  revelations: string[];
+  endingOutcome: string;
+  nextVolumeHook: string;
+  chapterRange?: string;
   status: "未开始" | "推进中" | "已完成";
 }
 

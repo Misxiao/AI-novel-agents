@@ -56,6 +56,9 @@ export class OutlineAgent extends BaseAgent {
       maxTokens: 7000,
       responseFormat: "json_object",
     });
+    if (run.completion.finishReason === "length") {
+      throw new Error("初始大纲模型输出被截断，请减少卷数后重试或使用支持更长输出的模型");
+    }
     const parsed = parseJsonPayload<InitialOutlineJsonPayload>("OutlineAgent", run.completion.content);
     const master = parsed.masterOutline;
     if (!master || typeof master !== "object") {
@@ -63,8 +66,10 @@ export class OutlineAgent extends BaseAgent {
     }
 
     const output = normalizeOutlineDraft(parsed, input.novelId);
-    if (output.chapterPlans.length === 0) {
-      throw new Error("前置资产缺少 chapterPlans");
+    if (output.volumes.length !== input.volumeCount) {
+      throw new Error(
+        `分卷数量不符合用户选择：期望 ${input.volumeCount} 卷，实际 ${output.volumes.length} 卷`,
+      );
     }
 
     return {
@@ -206,7 +211,7 @@ function normalizeOutlineDraft(
       protagonistArc: requiredText(master.protagonistArc, "masterOutline.protagonistArc"),
     },
     volumes,
-    chapterPlans: normalizeChapterPlans(value.chapterPlans, novelId, volumes),
+    chapterPlans: [],
     timelineEvents: normalizeTimeline(value.timelineEvents),
     foreshadowing: normalizeForeshadowing(value.foreshadowing),
     issues: normalizeIssues(value.issues),
@@ -444,7 +449,12 @@ function normalizeVolumes(value: unknown): VolumePlanDraft[] {
       goal,
       conflict: optionalText(candidate.conflict),
       highlights: stringArray(candidate.highlights),
-      chapterRange: optionalText(candidate.chapterRange),
+      stages: stringArray(candidate.stages),
+      characterDevelopment: stringArray(candidate.characterDevelopment),
+      powerSystemProgression: optionalText(candidate.powerSystemProgression),
+      revelations: stringArray(candidate.revelations),
+      endingOutcome: optionalText(candidate.endingOutcome),
+      nextVolumeHook: optionalText(candidate.nextVolumeHook),
       status: candidate.status === "推进中" || candidate.status === "已完成" ? candidate.status : "未开始",
     }];
   });

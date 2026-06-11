@@ -129,7 +129,26 @@ function createNovelCommands(): CommandDefinition[] {
       };
     }, { maxPositionals: 1 }),
     define(["novel", "use"], "切换当前小说", "novel use <novelId>", ["novel use novel-123"], async (context, command) => {
-      const novelId = command.positionals[0];
+      let novelId: string | undefined = command.positionals[0];
+      if (!novelId && context.interactive) {
+        const novels = context.services.workspace.listNovels();
+        if (novels.length === 0) {
+          throw new CliUsageError("暂无可选择的小说，请先执行 novel create。");
+        }
+        novelId = context.io.select
+          ? await context.io.select(
+              "选择小说",
+              novels.map((novel) => ({
+                value: novel.novelId,
+                label: `${displayNovelTitle(novel)}  (${novel.novelId})`,
+                searchText: `${novel.title} ${novel.novelId}`,
+              })),
+            )
+          : (await context.io.question("请输入 novelId：")).trim();
+        if (!novelId) {
+          return { exitCode: 0, lines: ["已取消切换小说。"] };
+        }
+      }
       if (!novelId) {
         throw new CliUsageError("必须提供 novelId。");
       }
@@ -342,15 +361,12 @@ function createWorkspaceQueryCommands(): CommandDefinition[] {
 
 function createWorkflowCommands(): CommandDefinition[] {
   return [
-    define(["preflight", "run"], "生成小说基础盘、设定和初始大纲", "preflight run --seed-notes <想法> [--target-words <字数>] [--chapter-plans <10-20>] [--novel-id <id>] [--mock] [--json]", ['preflight run --seed-notes "主角必须在失忆前关闭裂界" --target-words 120000', 'preflight run --seed-notes "一个模糊想法" --mock'], async (context, command) => {
+    define(["preflight", "run"], "生成小说基础盘、设定、全书脉络和分卷规划", "preflight run --seed-notes <想法> --volumes <卷数> [--target-words <字数>] [--novel-id <id>] [--mock] [--json]", ['preflight run --seed-notes "主角必须在失忆前关闭裂界" --volumes 6 --target-words 120000', 'preflight run --seed-notes "一个模糊想法" --volumes 3 --mock'], async (context, command) => {
       const novelId = resolveNovelId(context, command);
       requireNovel(context, novelId);
       let seedNotes = readStringOption(command, "seed-notes")?.trim();
       let targetWords = readIntegerOption(command, "target-words", { min: 1 });
-      let chapterPlanCount = readIntegerOption(command, "chapter-plans", {
-        min: 10,
-        max: 20,
-      });
+      let volumeCount = readIntegerOption(command, "volumes", { min: 1, max: 100 });
       if (!seedNotes && context.interactive) {
         seedNotes = (await context.io.question("请输入小说初步想法：")).trim();
       }
@@ -364,26 +380,29 @@ function createWorkflowCommands(): CommandDefinition[] {
           1,
         );
       }
-      if (chapterPlanCount === undefined && context.interactive) {
-        chapterPlanCount = parseOptionalPromptInteger(
-          await context.io.question("首批章纲数量 10-20（默认 12）："),
-          "首批章纲数量",
-          10,
-          20,
-        ) ?? 12;
+      if (volumeCount === undefined && context.interactive) {
+        volumeCount = parseOptionalPromptInteger(
+          await context.io.question("计划分为多少卷："),
+          "卷数",
+          1,
+          100,
+        );
+      }
+      if (volumeCount === undefined) {
+        throw new CliUsageError("必须提供 --volumes。");
       }
       const model = createOptionalMockModel(
         context,
         command,
         "preflight",
         novelId,
-        { chapterPlanCount, targetWords },
+        { volumeCount, targetWords },
       );
       const result = await runNovelPreflightWorkflow({
         novelId,
         seedNotes,
         targetWords,
-        chapterPlanCount,
+        volumeCount,
         model,
         repository: context.services.preflight,
       });
@@ -394,7 +413,6 @@ function createWorkflowCommands(): CommandDefinition[] {
           `前置资产已生成，状态：${result.task.status}`,
           `标题候选：${result.foundationDraft.titleCandidates.join(" / ") || "暂无"}`,
           `分卷：${result.outlineDraft.volumes.length}`,
-          `首批章纲：${result.chapterPlans.length}`,
           `评审：基础盘 ${result.reviews.foundation.overallScore} / 设定 ${result.reviews.setting.overallScore} / 大纲 ${result.reviews.outline.overallScore}`,
         ],
       };
@@ -453,8 +471,7 @@ function createWorkflowCommands(): CommandDefinition[] {
           "前置资产和大纲已确认。",
           `来源：${result.versionId ?? "初始大纲草案"}`,
           `分卷：${result.outline.volumes.length}`,
-          `已确认章纲：${result.chapterPlans.length}`,
-          "小说已具备章节生产上下文。",
+          "小说全书脉络与分卷规划已进入正式资产。",
         ],
       };
     }),

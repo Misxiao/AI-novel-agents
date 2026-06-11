@@ -11,7 +11,7 @@ export interface NovelPreflightCliOptions {
   novelId?: string;
   seedNotes: string;
   targetWords?: number;
-  chapterPlanCount?: number;
+  volumeCount: number;
   mock: boolean;
   json: boolean;
 }
@@ -21,7 +21,6 @@ export interface NovelPreflightSummaryInput {
   titleCandidates: string[];
   synopsis: string;
   volumeCount: number;
-  chapterPlanCount: number;
   reviewScores: {
     foundation: number;
     setting: number;
@@ -55,7 +54,7 @@ export function parseNovelPreflightArgs(args: string[]): NovelPreflightCliOption
     novelId: values.get("novel-id")?.trim() || undefined,
     seedNotes,
     targetWords: parsePositiveInteger(values.get("target-words"), "target-words"),
-    chapterPlanCount: parsePositiveInteger(values.get("chapter-plans"), "chapter-plans"),
+    volumeCount: parsePositiveInteger(values.get("volumes"), "volumes") ?? 0,
     mock: flags.has("mock"),
     json: flags.has("json"),
   };
@@ -68,7 +67,6 @@ export function buildNovelPreflightSummary(input: NovelPreflightSummaryInput) {
     `标题候选: ${input.titleCandidates.join(" / ") || "暂无"}`,
     `简介: ${input.synopsis}`,
     `分卷: ${input.volumeCount}`,
-    `首批章纲: ${input.chapterPlanCount}`,
     `评审分数: 基础盘 ${input.reviewScores.foundation} / 设定 ${input.reviewScores.setting} / 大纲 ${input.reviewScores.outline}`,
     `风险: ${input.risks.join("；") || "暂无"}`,
     `Agent Runs: ${input.agentRunCount}`,
@@ -80,12 +78,15 @@ async function main() {
   const options = parseNovelPreflightArgs(process.argv.slice(2));
   const repository = new NovelPreflightRepository(new NovelDatabase());
   const novelId = options.novelId ?? repository.createEmptyNovel().novelId;
-  const model = options.mock ? createMockModel(novelId, options.chapterPlanCount ?? 12) : undefined;
+  if (options.volumeCount < 1) {
+    throw new Error("必须传入 --volumes=卷数。");
+  }
+  const model = options.mock ? createMockModel(novelId, options.volumeCount) : undefined;
   const result = await runNovelPreflightWorkflow({
     novelId,
     seedNotes: options.seedNotes,
     targetWords: options.targetWords,
-    chapterPlanCount: options.chapterPlanCount,
+    volumeCount: options.volumeCount,
     model,
     repository,
   });
@@ -100,7 +101,6 @@ async function main() {
     titleCandidates: result.foundationDraft.titleCandidates,
     synopsis: result.foundationDraft.synopsis,
     volumeCount: result.outlineDraft.volumes.length,
-    chapterPlanCount: result.chapterPlans.length,
     reviewScores: {
       foundation: result.reviews.foundation.overallScore,
       setting: result.reviews.setting.overallScore,
@@ -117,8 +117,8 @@ async function main() {
   }));
 }
 
-function createMockModel(novelId: string, chapterPlanCount: number): ChatModel {
-  const payloads = buildMockPayloads(novelId, Math.min(20, Math.max(10, chapterPlanCount)));
+function createMockModel(novelId: string, volumeCount: number): ChatModel {
+  const payloads = buildMockPayloads(novelId, volumeCount);
   let index = 0;
   return {
     provider: "mock",
@@ -144,7 +144,7 @@ function createMockModel(novelId: string, chapterPlanCount: number): ChatModel {
   };
 }
 
-function buildMockPayloads(novelId: string, chapterPlanCount: number): unknown[] {
+function buildMockPayloads(novelId: string, volumeCount: number): unknown[] {
   const review = (summary: string) => ({
     passed: true,
     overallScore: 88,
@@ -167,9 +167,7 @@ function buildMockPayloads(novelId: string, chapterPlanCount: number): unknown[]
       targetReaders: "喜欢玄幻升级与悬疑反转的读者",
       tone: "紧张、克制、行动驱动",
       targetWords: 360000,
-      estimatedChapters: 120,
-      estimatedVolumes: 4,
-      chapterWordTarget: 3000,
+      plannedVolumes: volumeCount,
       risks: [],
       questionsForAuthor: ["回档最终是否必须终止？"],
       status: "待确认",
@@ -210,25 +208,21 @@ function buildMockPayloads(novelId: string, chapterPlanCount: number): unknown[]
         ending: "终止回档，由同伴保存共同真相。",
         protagonistArc: "从只相信自己的记忆到学会信任他人。",
       },
-      volumes: Array.from({ length: 4 }, (_, index) => ({
+      volumes: Array.from({ length: volumeCount }, (_, index) => ({
         id: `volume-${index + 1}`,
         title: `第 ${index + 1} 卷`,
         goal: `完成阶段目标 ${index + 1}`,
         conflict: `矛盾升级 ${index + 1}`,
         highlights: [`阶段兑现 ${index + 1}`],
-        chapterRange: `${index * 30 + 1}-${(index + 1) * 30}`,
+        stages: ["建立目标", "推进冲突", "重大转折", "阶段高潮", "卷末收束"],
+        characterDevelopment: ["主角与伙伴关系发生阶段变化"],
+        powerSystemProgression: "本卷推进一层力量体系并明确代价。",
+        revelations: ["揭示一层世界真相"],
+        endingOutcome: "完成本卷目标并留下更大危机。",
+        nextVolumeHook: "新线索推动下一卷。",
         status: "未开始",
       })),
-      chapterPlans: Array.from({ length: chapterPlanCount }, (_, index) => ({
-        id: `chapter-plan-${index + 1}`,
-        novelId,
-        chapterNo: index + 1,
-        title: `第 ${index + 1} 章`,
-        volumeTitle: "第一卷",
-        objective: `推进第一卷线索 ${index + 1}`,
-        hook: `留下下一章问题 ${index + 1}`,
-        status: "草稿",
-      })),
+      chapterPlans: [],
       timelineEvents: [],
       foreshadowing: [],
       issues: [],

@@ -14,7 +14,7 @@ export const createCliMockModel: NonNullable<CliCommandContext["createMockModel"
   const payloads = capability === "preflight"
     ? buildPreflightPayloads(
         novelId,
-        options.chapterPlanCount ?? 12,
+        options.volumeCount ?? 3,
         options.targetWords,
       )
     : capability === "chapter-write"
@@ -56,10 +56,9 @@ export const createCliMockModel: NonNullable<CliCommandContext["createMockModel"
 
 function buildPreflightPayloads(
   novelId: string,
-  count: number,
+  volumeCount: number,
   targetWords?: number,
 ): unknown[] {
-  const chapterPlanCount = Math.min(20, Math.max(10, count));
   return [
     {
       novelId,
@@ -73,9 +72,7 @@ function buildPreflightPayloads(
       targetReaders: "喜欢玄幻悬疑与规则代价的读者",
       tone: "紧张、克制、行动驱动",
       targetWords: targetWords ?? 120000,
-      estimatedChapters: Math.max(1, Math.ceil((targetWords ?? 120000) / 2500)),
-      estimatedVolumes: 3,
-      chapterWordTarget: 2500,
+      plannedVolumes: volumeCount,
       risks: [],
       questionsForAuthor: [],
       status: "待确认",
@@ -106,7 +103,7 @@ function buildPreflightPayloads(
       status: "待确认",
     },
     reviewPayload("设定边界清楚。"),
-    createOutline(novelId, chapterPlanCount),
+    createOutline(novelId, volumeCount),
     reviewPayload("初始大纲可进入人工确认。"),
   ];
 }
@@ -223,7 +220,7 @@ function buildChapterPayloads(hasExistingChapterPlan = false): unknown[] {
   return payloads;
 }
 
-function createOutline(novelId: string, chapterPlanCount: number): InitialOutlineDraft {
+function createOutline(novelId: string, volumeCount: number): InitialOutlineDraft {
   return {
     novelId,
     masterOutline: {
@@ -234,26 +231,25 @@ function createOutline(novelId: string, chapterPlanCount: number): InitialOutlin
       ending: "裂界关闭，共同记录保存了主角身份。",
       protagonistArc: "从独自承担到相信共同记忆。",
     },
-    volumes: [{
-      id: "volume-1",
-      title: "第一卷：旧城裂口",
-      goal: "关闭旧城裂界并找到失踪盟友。",
-      conflict: "守界司内部隐藏真相。",
-      highlights: ["第一次主动封印"],
-      chapterRange: `1-${chapterPlanCount}`,
+    volumes: Array.from({ length: volumeCount }, (_, index) => ({
+      id: `volume-${index + 1}`,
+      title: `第 ${index + 1} 卷`,
+      goal: `推进第 ${index + 1} 阶段主线并揭示新的裂界真相。`,
+      conflict: `主角需要应对第 ${index + 1} 阶段的外部危机与内部代价。`,
+      highlights: [
+        `阶段起点：承接上一卷结果并建立新目标。`,
+        `阶段转折：关键关系与力量体系发生变化。`,
+        `卷末结果：完成本卷目标并推动下一阶段。`,
+      ],
+      stages: ["建立新危机", "探索规则", "关系分裂", "阶段决战", "完成收束"],
+      characterDevelopment: ["主角承担新的代价", "伙伴关系因选择发生变化"],
+      powerSystemProgression: "确认本阶段力量边界，并获得带有代价的新能力。",
+      revelations: ["揭示一层裂界来源", "保留更高层世界的核心谜团"],
+      endingOutcome: "本卷主要危机解决，但世界范围的威胁进一步扩大。",
+      nextVolumeHook: "新的裂界坐标指向更广阔区域。",
       status: "未开始",
-    }],
-    chapterPlans: Array.from({ length: chapterPlanCount }, (_, index) => ({
-      id: `chapter-plan-${index + 1}`,
-      novelId,
-      chapterNo: index + 1,
-      title: `第 ${index + 1} 章`,
-      volumeId: "volume-1",
-      volumeTitle: "第一卷：旧城裂口",
-      objective: `推进裂界线索 ${index + 1}`,
-      hook: `留下裂界疑问 ${index + 1}`,
-      status: "草稿",
     })),
+    chapterPlans: [],
     timelineEvents: [],
     foreshadowing: [],
     issues: [],

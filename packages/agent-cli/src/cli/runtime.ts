@@ -44,9 +44,14 @@ export class CliRuntime {
     }
     const resolved = this.registry.resolve(tokens);
     if (!resolved) {
+      const helpPath = this.registry.nearestHelpPath(tokens);
       return {
         exitCode: 2,
-        lines: [`未知命令：${tokens.join(" ")}`, "输入 help 查看可用命令。"],
+        lines: [
+          `未知命令：${tokens.join(" ")}`,
+          "",
+          this.registry.buildHelp(helpPath),
+        ],
       };
     }
 
@@ -93,6 +98,18 @@ export class CliRuntime {
     const novelId = this.session.activeNovelId;
     if (!novelId) return "未选择";
     const novel = this.context.services.workspace.getNovel(novelId);
-    return novel?.title.trim() || novelId;
+    return novel?.title.trim() || "未命名小说";
+  }
+
+  completeLine(line: string): [string[], string] {
+    const current = line.match(/(?:^|\s)([^\s]*)$/)?.[1] ?? "";
+    const commandCompletions = this.registry.complete(line);
+    if (/^\s*novel\s+use\s+/i.test(line)) {
+      const novelIds = this.context.services.workspace.listNovels()
+        .map((novel) => novel.novelId)
+        .filter((novelId) => novelId.startsWith(current));
+      return [[...new Set([...novelIds, ...commandCompletions])], current];
+    }
+    return [commandCompletions, current];
   }
 }

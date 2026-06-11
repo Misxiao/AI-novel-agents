@@ -11,5 +11,17 @@
     "../workflow/src/**/*.ts",
     "../repositories/src/**/*.ts",
     "../db/src/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "../agents/src/**/*.test.ts",
+    "../agents/src/**/*.spec.ts",
+    "../workflow/src/**/*.test.ts",
+    "../workflow/src/**/*.spec.ts",
+    "../repositories/src/**/*.test.ts",
+    "../repositories/src/**/*.spec.ts",
+    "../db/src/**/*.test.ts",
+    "../db/src/**/*.spec.ts"
   ]
 }

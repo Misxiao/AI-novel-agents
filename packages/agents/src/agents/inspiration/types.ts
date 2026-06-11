@@ -4,6 +4,7 @@ export interface GenerateFoundationDraftInput {
   novelId: string;
   seedNotes: string;
   targetWords?: number;
+  volumeCount: number;
 }
 
 export type GenerateFoundationDraftOutput = NovelFoundationDraft;

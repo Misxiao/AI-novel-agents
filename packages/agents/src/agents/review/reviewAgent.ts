@@ -425,9 +425,6 @@ function buildPreflightDeterministicIssues(
     if (draft.volumes.length === 0) {
       issues.push(preflightIssue("outline-volumes", "volumes", "大纲草案缺少分卷规划。"));
     }
-    if (draft.chapterPlans.length < 10) {
-      issues.push(preflightIssue("outline-chapter-plans", "chapter_plans", "首批章纲少于 10 章。"));
-    }
   }
   return issues;
 }

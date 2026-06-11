@@ -70,6 +70,41 @@ export class CommandRegistry {
       : null;
   }
 
+  complete(line: string) {
+    const trailingSpace = /\s$/.test(line);
+    const tokens = line.trim().split(/\s+/).filter(Boolean);
+    const current = trailingSpace ? "" : tokens.pop() ?? "";
+    const completed = tokens[0] === "help" ? tokens.slice(1) : tokens;
+    const definitions = this.definitions.filter((item) =>
+      completed.every((segment, index) => item.path[index] === segment)
+    );
+    const nextSegments = definitions
+      .map((item) => item.path[completed.length])
+      .filter((segment): segment is string => Boolean(segment));
+
+    if (nextSegments.length > 0) {
+      return unique(nextSegments).filter((segment) => segment.startsWith(current));
+    }
+
+    const resolved = this.resolve(completed);
+    if (!resolved) return [];
+    return resolved.definition.allowedOptions
+      .map((option) => `--${option}`)
+      .filter((option) => option.startsWith(current));
+  }
+
+  nearestHelpPath(tokens: string[]) {
+    for (let length = tokens.length; length > 0; length -= 1) {
+      const path = tokens.slice(0, length);
+      if (this.definitions.some((item) =>
+        path.every((segment, index) => item.path[index] === segment)
+      )) {
+        return path;
+      }
+    }
+    return [];
+  }
+
   buildHelp(path: string[] = []) {
     const exact = this.definitions.find((item) =>
       item.path.length === path.length
@@ -140,4 +175,8 @@ export class CommandRegistry {
   list() {
     return [...this.definitions];
   }
+}
+
+function unique(values: string[]) {
+  return [...new Set(values)].sort();
 }

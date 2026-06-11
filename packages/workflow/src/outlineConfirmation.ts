@@ -134,7 +134,6 @@ export async function runConfirmOutlineWorkflow(
   const outputSnapshot = [
     `已确认小说《${selectedTitle}》的前置资产和正式大纲`,
     `分卷 ${confirmedOutline.volumes.length} 个`,
-    `首批章纲 ${chapterPlans.length} 章`,
     source.versionId ? `来源版本 ${source.versionId}` : "来源初始大纲草案",
   ].join("；");
   const task = {
@@ -163,7 +162,7 @@ export async function runConfirmOutlineWorkflow(
       hook: foundation.hook,
       targetReaders: foundation.targetReaders,
       targetWords: foundation.targetWords,
-      totalChapters: foundation.estimatedChapters,
+      totalChapters: 0,
       currentVolume: confirmedOutline.volumes[0]?.title ?? "",
     },
     task,

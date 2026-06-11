@@ -19,7 +19,7 @@ export interface NovelPreflightWorkflowInput {
   novelId: string;
   seedNotes: string;
   targetWords?: number;
-  chapterPlanCount?: number;
+  volumeCount: number;
   model?: ChatModel;
   repository?: NovelPreflightRepositoryLike;
 }
@@ -45,7 +45,6 @@ export interface NovelPreflightWorkflowResult {
     setting: PreflightReviewOutput;
     outline: PreflightReviewOutput;
   };
-  chapterPlans: InitialOutlineDraft["chapterPlans"];
   agentRuns: AgentCapabilityRunMeta[];
 }
 
@@ -73,6 +72,7 @@ export async function runNovelPreflightWorkflow(
       novelId: input.novelId,
       seedNotes: input.seedNotes,
       targetWords: input.targetWords,
+      volumeCount: input.volumeCount,
     });
     agentRuns.push(foundationResult.run);
 
@@ -108,7 +108,7 @@ export async function runNovelPreflightWorkflow(
       novelId: input.novelId,
       foundation: foundationDraft,
       setting: settingDraft,
-      chapterPlanCount: input.chapterPlanCount,
+      volumeCount: input.volumeCount,
     });
     agentRuns.push(outlineResult.run);
 
@@ -148,7 +148,7 @@ export async function runNovelPreflightWorkflow(
       `基础盘：${foundationReview.output.overallScore} 分`,
       `设定：${settingReview.output.overallScore} 分`,
       `大纲：${outlineReview.output.overallScore} 分`,
-      `首批章纲：${outlineResult.output.chapterPlans.length} 章`,
+      `分卷规划：${outlineResult.output.volumes.length} 卷`,
       [foundationDraft, settingDraft, outlineDraft].some(
         (draft) => draft.status === "需修订",
       )
@@ -182,7 +182,6 @@ export async function runNovelPreflightWorkflow(
         setting: settingReview.output,
         outline: outlineReview.output,
       },
-      chapterPlans: outlineDraft.chapterPlans,
       agentRuns,
     };
   } catch (error) {
@@ -224,5 +223,8 @@ function assertInput(input: NovelPreflightWorkflowInput) {
   }
   if (input.targetWords !== undefined && (!Number.isFinite(input.targetWords) || input.targetWords <= 0)) {
     throw new Error("targetWords 必须为正数");
+  }
+  if (!Number.isInteger(input.volumeCount) || input.volumeCount < 1) {
+    throw new Error("volumeCount 必须是正整数");
   }
 }

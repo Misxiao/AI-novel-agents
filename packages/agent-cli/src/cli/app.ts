@@ -19,6 +19,7 @@ export async function runInteractiveCli(
   runtime: CliRuntime,
   io: CliIO,
 ) {
+  io.setCompletionProvider?.((line) => runtime.completeLine(line));
   io.write("AI 小说创作工作台。输入 help 查看命令，输入 exit 退出。");
   while (true) {
     let line: string;
@@ -40,10 +41,17 @@ export async function runInteractiveCli(
       continue;
     }
 
-    const result = await runtime.executeTokens(tokens, true);
-    renderResult(io, result, hasJsonFlag(tokens));
-    if (result.shouldExit) {
-      return result.exitCode;
+    try {
+      const result = await runtime.executeTokens(tokens, true);
+      renderResult(io, result, hasJsonFlag(tokens));
+      if (result.shouldExit) {
+        return result.exitCode;
+      }
+    } catch (error) {
+      io.writeError(
+        `命令执行异常：${error instanceof Error ? error.message : String(error)}`,
+      );
+      io.writeError("当前命令已终止，CLI 可以继续使用。");
     }
   }
 }

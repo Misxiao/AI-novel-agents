@@ -42,7 +42,6 @@ export class InspirationAgent extends BaseAgent {
       responseFormat: "json_object",
     });
     const parsed = parseJsonPayload<FoundationJsonPayload>("InspirationAgent", run.completion.content);
-    const chapterWordTarget = positiveInteger(parsed.chapterWordTarget, 3000);
     const targetWords = positiveInteger(parsed.targetWords, input.targetWords ?? 0);
 
     return {
@@ -58,12 +57,7 @@ export class InspirationAgent extends BaseAgent {
         targetReaders: optionalText(parsed.targetReaders) || "待进一步确认的中文网文读者",
         tone: optionalText(parsed.tone) || "动作与冲突驱动",
         targetWords,
-        estimatedChapters: positiveInteger(
-          parsed.estimatedChapters,
-          targetWords > 0 ? Math.ceil(targetWords / chapterWordTarget) : 0,
-        ),
-        estimatedVolumes: positiveInteger(parsed.estimatedVolumes, targetWords > 0 ? Math.max(1, Math.ceil(targetWords / 100000)) : 1),
-        chapterWordTarget,
+        plannedVolumes: input.volumeCount,
         risks: stringArray(parsed.risks),
         questionsForAuthor: stringArray(parsed.questionsForAuthor),
         status: "待确认",
@@ -98,5 +92,8 @@ function assertInput(input: GenerateFoundationDraftInput) {
   }
   if (!input.seedNotes.trim()) {
     throw new Error("seedNotes 不能为空");
+  }
+  if (!Number.isInteger(input.volumeCount) || input.volumeCount < 1) {
+    throw new Error("volumeCount 必须是正整数");
   }
 }

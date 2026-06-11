@@ -14,6 +14,16 @@ export interface CliIO {
   write(message: string): void;
   writeError(message: string): void;
   question(prompt: string): Promise<string>;
+  setCompletionProvider?(
+    provider: (line: string) => [completions: string[], word: string],
+  ): void;
+  select?(prompt: string, items: CliSelectItem[]): Promise<string | undefined>;
+}
+
+export interface CliSelectItem {
+  value: string;
+  label: string;
+  searchText?: string;
 }
 
 export type CliOptionValue = string | string[] | boolean;
@@ -50,7 +60,7 @@ export interface CliCommandContext {
       sourceOutline?: InitialOutlineDraft;
       instruction?: string;
       volumeId?: string;
-      chapterPlanCount?: number;
+      volumeCount?: number;
       targetWords?: number;
       hasExistingChapterPlan?: boolean;
     },
