@@ -2,6 +2,7 @@
   "name": "@ai-novel-agents/db",
   "private": true,
   "version": "0.1.0",
+  "description": "（遗留）旧 SQLite 层，仅 apps/api 仍依赖；新 CLI 创作链路请使用 @ai-novel-agents/store",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,75 +1,73 @@
-# AI 小说 Agent 管理平台
+# AI 小说 Agent 创作平台
 
-本项目是一个本地优先的中文网文创作 Agent 管理平台，面向多小说、多 Agent、多记忆域的长期创作工作流。
+本地优先的中文网文创作 Agent 平台，面向多小说、长篇连载的完整创作闭环。当前阶段以 **CLI 向导式工作台** 为唯一入口，从立项、设定、大纲一路到逐章生产、评审、确认与长篇记忆维护，全程在终端完成。
 
-当前阶段的长期开发重心是 Agent 底层能力、项目自有 Workflow、小说记忆和本地资产闭环。除非明确进入接入阶段，默认不改 `apps/web` 和 `apps/api`。
+> 当前重心是 Agent 能力、自有 Workflow 编排和长篇记忆闭环。`apps/web`、`apps/api` 暂不维护，可视为不存在。
 
-文档入口见 `docs/README.md`，核心开发约定见 `docs/architecture/development-handbook.md`。后续核心工作流不使用 LangGraph.js，统一沿用项目内自有 TypeScript Workflow 编排模式。
+## 快速开始
 
-## 本地开发
+1. 安装依赖：
 
-安装依赖后，在项目根目录运行：
+   ```bash
+   pnpm install
+   ```
+
+2. 配置模型（项目根目录 `.env`，可参考 `.env.example`）：
+
+   ```bash
+   DEEPSEEK_API_KEY=你的 DeepSeek API Key
+   DEEPSEEK_MODEL=deepseek-v4-flash      # 默认档位
+   # 可选：按任务档位分别指定模型（格式 provider:model）
+   LLM_PLAN_MODEL=deepseek:deepseek-v4-flash    # 规划/大纲
+   LLM_PROSE_MODEL=deepseek:deepseek-v4-pro      # 正文
+   LLM_REVIEW_MODEL=deepseek:deepseek-v4-flash   # 评审/记忆
+   ```
+
+3. 启动工作台：
+
+   ```bash
+   pnpm cli            # 真实模型
+   pnpm cli:mock       # 离线演练（本地固定响应，不消耗额度）
+   ```
+
+## 工作台怎么用
+
+进入后选择或新建小说，仪表盘会显示当前进度并给出 **下一步建议**，回车即执行，或上下键选择其他动作：
+
+```
+《噬星者》 连载中 · 已确认 36 章 · 下一章 第 37 章 · 伏笔待回收 2 · 1.2M tokens
+★ 确认第 37 章草稿（评分 8.4，一致性通过）   ← 回车执行
+  写下一章 / 修改基础盘·设定 / 修改大纲 / 修改章节 / 资料库 / 切换小说 / 退出
+```
+
+平台自动驱动整条创作链：
+
+```
+新建小说 → 生成基础盘 → 生成设定 → 生成总纲 → 生成卷纲
+        → 逐章：装配上下文 → 章纲 → 流式写正文 → 评审+六层一致性 → 按需修订
+        → 确认：提取记忆（人物状态/伏笔/canon/摘要）→ 写入台账 → 滚动维护卷摘要与前情提要
+```
+
+所有 AI 资产都有三条修改通道：**指令式 AI 修改**、**手工 `$EDITOR` 编辑**、台账类（伏笔/人物/canon）**表单式手工修正**（资料库面板）。长流程实时流式显示正文与进度，崩溃后可在仪表盘断点续跑。
+
+## 工程结构
+
+| 包 | 职责 |
+| --- | --- |
+| `packages/llm` | ChatModel 接口、DeepSeek 流式接入、重试退避、按档位模型路由 |
+| `packages/store` | SQLite 持久化与长篇记忆：资产/大纲/章节草稿、伏笔台账、人物状态链、摘要链、canon、运行检查点；上下文装配 v2 |
+| `packages/agents` | 原子能力（capability）体系与注册表：inspiration/setting/outline/plan/writer/reviewer/memory；范文语料检索 |
+| `packages/workflow` | 自有步骤引擎（检查点/断点恢复/事件）+ 8 条创作 workflow |
+| `packages/cli` | `@clack/prompts` 向导式工作台 |
+| `packages/db` | （遗留）旧 SQLite 层，仅 `apps/api` 仍依赖 |
+
+`agents` 与 `workflow` 各自导出可枚举、自描述的能力/流程注册表，为后续对话式 director agent 预留接口。
+
+## 开发
 
 ```bash
-pnpm dev
+pnpm typecheck      # 检查全部 packages
+pnpm test           # 运行全部 packages 测试（node:test）
 ```
 
-该命令会同时启动前端和后端服务。后端默认监听 `API_PORT=4100`，前端 Vite 开发服务器会把 `/api` 请求代理到同一个后端端口。
-
-## 本地模型配置
-
-项目根目录提供 `.env.example` 作为环境变量模板，真实密钥写入本地 `.env`。`.env` 已被 `.gitignore` 排除，不应提交到仓库。
-
-当前 DeepSeek V4 基础接入读取以下变量：
-
-```bash
-LLM_PROVIDER=deepseek
-DEEPSEEK_API_KEY=你的 DeepSeek API Key
-DEEPSEEK_MODEL=deepseek-v4-flash
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-```
-
-`DEEPSEEK_MODEL` 可按需要改为 `deepseek-v4-pro`。后端或 Agent 进程启动前需要加载这些环境变量。
-
-## 小说创作 CLI
-
-统一 CLI 位于 `packages/agent-cli`。开发态启动：
-
-```bash
-pnpm --filter @ai-novel-agents/agent-cli demo
-```
-
-无参数时进入交互工作台：
-
-```text
-AI 小说创作工作台。输入 help 查看命令，输入 exit 退出。
-ai-novel[未选择]> novel create
-ai-novel[novel-...]> novel update --title "裂界回声"
-ai-novel[裂界回声]> help outline
-```
-
-也可以一次执行一条命令：
-
-```bash
-pnpm --filter @ai-novel-agents/agent-cli demo help
-pnpm --filter @ai-novel-agents/agent-cli demo novel list
-pnpm --filter @ai-novel-agents/agent-cli demo novel create --json
-pnpm --filter @ai-novel-agents/agent-cli demo preflight run \
-  --novel-id=novel-xxx \
-  --seed-notes="主角必须在失忆前关闭裂界" \
-  --target-words=120000 \
-  --mock
-```
-
-主要命令分组：
-
-- `novel`：列表、创建、查看、切换和修改小说基础信息。
-- `preflight`：生成基础盘、设定、总纲、卷纲和首批章纲。
-- `asset`：查看前置资产草案。
-- `outline`：查看大纲、版本历史以及修改总纲或卷纲。
-- `task`：查看 Workflow 任务历史。
-- `chapter`：运行单章生产和质量评审 Workflow。
-
-在交互模式中，`novel use <novelId>` 选择的当前小说只在本次会话内有效。所有 AI 命令默认读取 `.env` 中的真实模型配置；显式传入 `--mock` 可使用本地固定模型响应进行验证。
-
-生成或修改大纲后，运行 `outline confirm` 将前置资产与选中的大纲版本写入正式资产；确认完成后，`chapter write` 才会读取这些章纲、世界规则和风格约束。
+不使用 LangGraph，Workflow 统一用项目内自有 TypeScript 步骤引擎。所有面向用户与开发者的文案使用中文。

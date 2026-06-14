@@ -2,18 +2,25 @@
 
 ## 项目定位
 
-这是一个本地优先的中文网文创作 Agent 管理平台。平台以 Web 方式管理多个小说项目，每本小说拥有独立记忆、独立创作资产、独立任务历史和独立质量报告。
+这是一个本地优先的中文网文创作 Agent 平台，目标是生成高质量的长篇连载。当前阶段以 **CLI 向导式工作台**（`pnpm cli`）为唯一入口，每本小说拥有独立记忆、独立创作资产、独立运行记录。
 
-本项目不是 Prompt/Skill 配置平台。Agent、Prompt、Skill 模块、工具权限和 Workflow 均为项目内置能力，由代码和文档维护，不在前端暴露配置入口。
+本项目不是 Prompt/Skill 配置平台。Agent、Prompt、写作技法与 Workflow 均为项目内置能力，由代码维护。
 
 ## 技术边界
 
-- 前端使用 Vite + React。
-- 后端使用 Fastify。
-- Agent 编排不再使用 LangGraph.js，改为项目内自有 Workflow 层串联独立 Agent 能力。
-- 语言使用 TypeScript。
-- 数据存储以本地优先为原则，默认从 SQLite 设计起步。
-- 多小说隔离是核心约束，任何记忆、检索、任务、章节、角色和设定都必须绑定 `novelId`。
+- 当前只维护 `packages/**` 的 CLI 创作链路。`apps/web`、`apps/api` 暂不维护，可视为不存在；`packages/db` 是仅供 `apps/api` 残留依赖的遗留包，新代码不要引用。
+- Agent 编排不使用 LangGraph，统一用 `packages/workflow` 的自有步骤引擎串联原子能力。
+- 语言使用 TypeScript，运行时用 tsx 直跑源码，包之间用 `@ai-novel-agents/*` 包名导入。
+- 数据存储本地优先，新数据层是 `packages/store`（SQLite + 长篇记忆 schema）。
+- 多小说隔离是核心约束：任何记忆、章节、角色、伏笔、canon 和运行记录都必须绑定 `novelId`。
+
+## 包结构
+
+- `packages/llm`：ChatModel 流式接口、重试退避、按档位（plan/prose/review）模型路由。
+- `packages/store`：领域类型单一来源 + 各领域 store + 记忆事务 + 上下文装配 v2。
+- `packages/agents`：capability 体系与注册表、写作技法资源、范文语料检索。
+- `packages/workflow`：步骤引擎（检查点/恢复/事件）与 8 条创作 workflow，含流程注册表。
+- `packages/cli`：`@clack/prompts` 向导式工作台。
 
 ## 工程约定
 
@@ -25,11 +32,12 @@
 - 不要把可变的 Agent 配置做成用户界面功能。
 - 不要把用户正在创作的小说内容、参考语料、阅读数据混入全局记忆。
 - 不要在没有明确需求时加入云端依赖；优先保持本地可运行。
-- 中文网文写作专项逻辑内置在 `packages/agents/src/webnovelSkill/`，素材包放在 `packages/agents/resources/webnovel-skill/`。这些内容属于系统能力，不提供前端配置入口。
+- 中文网文写作技法内置在 `packages/agents/src/resources/writingTechniques.ts`，范文语料由 `packages/agents/scripts/build-exemplars.ts` 从 `external/` 预构建为 `packages/agents/resources/exemplars.json`，检索逻辑在 `packages/agents/src/retrieval/`。这些属于系统能力。
 - 外部写作语料必须先确认授权再导入。未确认授权的长文本语料只能作为外部来源索引记录，不得默认复制进项目作为内置语料。
 - 外部学习源中写得好的 Prompt、Skill 规则、审查维度、写作技法和文本结构样式，可以经过方法论提炼、结构转译、原创化重写和项目化内化后，改造成项目自有能力；不得近似复制未授权长文本、示例正文、大段 Prompt 或受许可证限制的源码。
 - 外部开源项目、Skill、论文或资料库作为学习源时，统一登记在 `docs/research/external-learning-sources.md`，本地源码镜像放在 `external/learning-sources/`。该目录仅用于查阅和调研，不作为本项目源码或内置素材提交。
-- 当前阶段优先建设可独立运行的 Agent 层和 Workflow 层。新增或修改 Agent/Workflow 能力时，默认只改 `packages/agents`、`packages/workflow` 及相关说明文档；不要同步修改 `apps/web`、`apps/api` 或接口接入层。等 Agent/Workflow 独立验证稳定后，再单独规划 Web/API 接入。
+- 当前阶段优先建设可独立运行的 Agent 层、Workflow 层和 CLI。新增或修改能力时，默认只改 `packages/**`；不要修改 `apps/web`、`apps/api` 或 `packages/db`。等创作链路稳定后，再单独规划 Web/API 接入（届时对接 `packages/store`）。
+- 验证方式：`pnpm typecheck`、`pnpm test`（node:test）跑全部 packages；`pnpm cli:mock` 用离线模型走通向导流程。
 
 ## 工作方式
 
