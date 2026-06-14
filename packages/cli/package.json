@@ -1,0 +1,26 @@
+{
+  "name": "@ai-novel-agents/cli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "ai-novel": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/index.ts",
+    "test": "node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@ai-novel-agents/agents": "workspace:*",
+    "@ai-novel-agents/llm": "workspace:*",
+    "@ai-novel-agents/store": "workspace:*",
+    "@ai-novel-agents/workflow": "workspace:*",
+    "@clack/prompts": "^0.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}
