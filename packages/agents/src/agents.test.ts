@@ -182,6 +182,7 @@ test("generateVolumeOutline 提示词包含伏笔台账与起始章号", async (
           description: "失踪之谜",
           importance: "core",
           status: "planted",
+          source: "outline",
           plantedChapterNo: 1,
           createdAt: "",
           updatedAt: "",

@@ -6,6 +6,7 @@ import type {
   ForeshadowEvent,
   ForeshadowEventKind,
   ForeshadowImportance,
+  ForeshadowSource,
 } from "./types.js";
 
 interface ForeshadowRow {
@@ -15,6 +16,7 @@ interface ForeshadowRow {
   description: string;
   importance: ForeshadowImportance;
   status: Foreshadow["status"];
+  source: ForeshadowSource;
   planted_chapter_no: number;
   expected_resolve_from: number | null;
   expected_resolve_to: number | null;
@@ -40,6 +42,7 @@ export interface ForeshadowStore {
     description: string;
     importance: ForeshadowImportance;
     plantedChapterNo: number;
+    source?: ForeshadowSource;
     expectedResolveFrom?: number;
     expectedResolveTo?: number;
   }): Foreshadow;
@@ -70,6 +73,7 @@ export function createForeshadowStore(db: Database): ForeshadowStore {
       description: row.description,
       importance: row.importance,
       status: row.status,
+      source: row.source,
       plantedChapterNo: row.planted_chapter_no,
       expectedResolveFrom: row.expected_resolve_from ?? undefined,
       expectedResolveTo: row.expected_resolve_to ?? undefined,
@@ -112,6 +116,7 @@ export function createForeshadowStore(db: Database): ForeshadowStore {
           description: input.description,
           importance: input.importance,
           status: "planted",
+          source: input.source ?? "memory",
           plantedChapterNo: input.plantedChapterNo,
           expectedResolveFrom: input.expectedResolveFrom,
           expectedResolveTo: input.expectedResolveTo,
@@ -120,9 +125,9 @@ export function createForeshadowStore(db: Database): ForeshadowStore {
         };
         db.prepare(
           `INSERT INTO foreshadows
-             (id, novel_id, title, description, importance, status, planted_chapter_no,
+             (id, novel_id, title, description, importance, status, source, planted_chapter_no,
               expected_resolve_from, expected_resolve_to, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           foreshadow.id,
           foreshadow.novelId,
@@ -130,6 +135,7 @@ export function createForeshadowStore(db: Database): ForeshadowStore {
           foreshadow.description,
           foreshadow.importance,
           foreshadow.status,
+          foreshadow.source,
           foreshadow.plantedChapterNo,
           foreshadow.expectedResolveFrom ?? null,
           foreshadow.expectedResolveTo ?? null,

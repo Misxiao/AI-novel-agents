@@ -211,6 +211,8 @@ export interface DraftReview {
 export type ForeshadowImportance = "core" | "major" | "minor";
 export type ForeshadowStatus = "planted" | "advanced" | "resolved" | "abandoned";
 export type ForeshadowEventKind = "planted" | "advanced" | "resolved" | "abandoned";
+/** outline：来自大纲种子（长期存在，不随单章回滚）；memory：写作中涌现 */
+export type ForeshadowSource = "outline" | "memory";
 
 export interface Foreshadow {
   id: string;
@@ -219,6 +221,7 @@ export interface Foreshadow {
   description: string;
   importance: ForeshadowImportance;
   status: ForeshadowStatus;
+  source: ForeshadowSource;
   plantedChapterNo: number;
   expectedResolveFrom?: number;
   expectedResolveTo?: number;

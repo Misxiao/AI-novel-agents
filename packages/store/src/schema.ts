@@ -70,6 +70,7 @@ CREATE TABLE foreshadows (
   description           TEXT NOT NULL,
   importance            TEXT NOT NULL DEFAULT 'minor',
   status                TEXT NOT NULL DEFAULT 'planted',
+  source                TEXT NOT NULL DEFAULT 'memory',
   planted_chapter_no    INTEGER NOT NULL,
   expected_resolve_from INTEGER,
   expected_resolve_to   INTEGER,

@@ -107,10 +107,10 @@ export function createMemoryTransaction(db: Database, stores: MemoryStores): Mem
              AND character_id IN (SELECT id FROM characters WHERE novel_id = ?)`,
         ).run(chapterNo, novelId);
 
-        // 本章新埋的伏笔整体删除（含事件）
+        // 本章涌现并新埋的伏笔整体删除（含事件）；大纲种子伏笔不在此回滚
         const planted = db
           .prepare(
-            "SELECT id FROM foreshadows WHERE novel_id = ? AND planted_chapter_no = ?",
+            "SELECT id FROM foreshadows WHERE novel_id = ? AND planted_chapter_no = ? AND source = 'memory'",
           )
           .all(novelId, chapterNo) as Array<{ id: string }>;
         for (const { id } of planted) {
