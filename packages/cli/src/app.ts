@@ -17,7 +17,8 @@ import {
 import { assetPanel } from "./panels/assetPanel.js";
 import { outlinePanel } from "./panels/outlinePanel.js";
 import { progressPanel } from "./panels/progressPanel.js";
-import { chapterWorkspace, pickChapterAndOpen } from "./wizards/chapterWorkspace.js";
+import { volumePanel } from "./panels/volumePanel.js";
+import { chapterWorkspace } from "./wizards/chapterWorkspace.js";
 import { writeChapterWizard } from "./wizards/writeChapter.js";
 
 export async function runApp(ctx: AppContext): Promise<void> {
@@ -189,8 +190,8 @@ function buildMenu(
   if (status.hasSetting) {
     options.push({ value: "outline", label: "大纲" });
   }
-  if (status.confirmedCount > 0 || status.reviewedChapterNos.length > 0) {
-    options.push({ value: "chapters", label: "章节" });
+  if (status.hasMainOutline) {
+    options.push({ value: "chapters", label: "章节", hint: "按卷管理" });
   }
   options.push({ value: "library", label: "资料库", hint: "伏笔 / 人物 / canon" });
   options.push({ value: "__delete__", label: color.red("删除本书") });
@@ -242,7 +243,7 @@ async function dispatch(
       await outlinePanel(ctx);
       return;
     case "chapters":
-      await pickChapterAndOpen(ctx);
+      await volumePanel(ctx);
       return;
     case "library":
       await libraryPanel(ctx);

@@ -120,7 +120,7 @@ async function volumeDetail(ctx: AppContext, volumeNo: number): Promise<void> {
   }
 }
 
-async function editOutline(
+export async function editOutline(
   ctx: AppContext,
   scope: "main" | "volume",
   volumeNo?: number,

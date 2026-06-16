@@ -21,39 +21,6 @@ const STATUS_LABEL: Record<Chapter["status"], string> = {
   confirmed: "已确认",
 };
 
-/** 选章 → 进入章节工作台（dashboard「修改章节」入口） */
-export async function pickChapterAndOpen(ctx: AppContext): Promise<void> {
-  const chapters = ctx.store.chapters
-    .list(ctx.currentNovelId)
-    .filter((c) => c.status !== "planned");
-  if (chapters.length === 0) {
-    p.log.warn("还没有写过章节");
-    return;
-  }
-  let chapterNo: number;
-  try {
-    chapterNo = await select<number>({
-      message: "进入哪一章？",
-      options: [
-        ...chapters
-          .slice()
-          .reverse()
-          .map((c) => ({
-            value: c.chapterNo,
-            label: `第 ${c.chapterNo} 章 ${c.title ?? ""}`,
-            hint: STATUS_LABEL[c.status],
-          })),
-        { value: 0, label: "返回" },
-      ],
-    });
-  } catch (error) {
-    if (error instanceof CancelError) return;
-    throw error;
-  }
-  if (chapterNo === 0) return;
-  await chapterWorkspace(ctx, chapterNo);
-}
-
 /** 章节工作台：查看 / 修改 / 确认，任何操作后留在本菜单（返回 = 回工作台） */
 export async function chapterWorkspace(ctx: AppContext, chapterNo: number): Promise<void> {
   for (;;) {
