@@ -18,7 +18,8 @@ export function unwrap<T>(value: T | symbol): T {
 }
 
 export async function text(opts: Parameters<typeof p.text>[0]): Promise<string> {
-  return unwrap(await p.text(opts));
+  // clack 在空提交时可能返回 undefined，统一兜成空串，调用方可安全 .trim()
+  return unwrap(await p.text(opts)) ?? "";
 }
 
 export async function select<T>(opts: {
