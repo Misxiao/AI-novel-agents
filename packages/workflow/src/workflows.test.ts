@@ -168,12 +168,13 @@ function setup(control: MockControl): {
   store: Store;
   deps: WorkflowDeps;
   events: WorkflowEvent[];
+  model: ReturnType<typeof createScriptedModel>;
 } {
   const store = openStore(":memory:");
   const model = createScriptedModel([buildResponder(control)]);
   const models: ModelRouter = () => model;
   const events: WorkflowEvent[] = [];
-  return { store, deps: { store, models, onEvent: (e) => events.push(e) }, events };
+  return { store, model, deps: { store, models, onEvent: (e) => events.push(e) }, events };
 }
 
 async function buildNovelWithThreeChapters(control: MockControl, deps: WorkflowDeps, store: Store) {
@@ -306,6 +307,37 @@ test("断点恢复：失败步骤之前的步骤被跳过", async () => {
     store.chapters.listDrafts(chapter.id).filter((d) => d.source === "write").length,
     1,
   );
+
+  store.close();
+});
+
+test("修改章节：extraDirectives（上一轮评审）传到 writer", async () => {
+  const control: MockControl = { failReview: false, memoryNonce: 0 };
+  const { store, deps, model } = setup(control);
+  const id = await buildNovelWithThreeChapters(control, deps, store);
+
+  const marker = "【上一轮评审】章末钩子太平，需停在反转上";
+  const revise = await runWorkflow(
+    reviseChapterWorkflow,
+    {
+      novelId: id,
+      chapterNo: 1,
+      mode: "revise",
+      instruction: "把开头节奏加快",
+      extraDirectives: [marker],
+    },
+    deps,
+  );
+  assert.equal(revise.status, "completed", revise.error ?? "");
+
+  // 找到 writer 的正文重写调用（非 JSON），断言两条指令都进了 prompt
+  const proseCall = model.calls.find(
+    (call) =>
+      call.responseFormat !== "json_object" &&
+      (call.messages.at(-1)?.content ?? "").includes(marker),
+  );
+  assert.ok(proseCall, "writer 应收到上一轮评审指令");
+  assert.ok((proseCall!.messages.at(-1)!.content).includes("把开头节奏加快"));
 
   store.close();
 });

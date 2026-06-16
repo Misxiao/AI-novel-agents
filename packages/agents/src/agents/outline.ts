@@ -106,6 +106,8 @@ export interface GenerateVolumeOutlineInput {
   previousVolumeSummary?: string;
   /** 当前未回收的伏笔，卷纲需要安排其中到期者 */
   openForeshadows: Foreshadow[];
+  /** 作者对本卷的想法（可选，优先满足） */
+  authorNotes?: string;
 }
 
 export const generateVolumeOutline = defineCapability<GenerateVolumeOutlineInput, VolumeOutline>({
@@ -133,6 +135,9 @@ export const generateVolumeOutline = defineCapability<GenerateVolumeOutlineInput
             : []),
           ...(input.previousVolumeSummary
             ? ["", "## 前一卷实际发生了什么", input.previousVolumeSummary]
+            : []),
+          ...(input.authorNotes?.trim()
+            ? ["", "## 作者想法（优先满足）", input.authorNotes.trim()]
             : []),
           "",
           "## 当前未回收的伏笔台账",

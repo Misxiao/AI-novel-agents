@@ -58,3 +58,32 @@ export async function number(opts: {
   const n = Number(raw.trim());
   return raw.trim() && Number.isFinite(n) ? n : (fallback ?? 0);
 }
+
+/** 预设项 + 「自定义输入…」：既能快选也能手填 */
+export async function chooseNumber(opts: {
+  message: string;
+  options: number[];
+  initialValue: number;
+  min?: number;
+  max?: number;
+  unit?: string;
+}): Promise<number> {
+  const unit = opts.unit ?? "";
+  const choice = await select<string>({
+    message: opts.message,
+    options: [
+      ...opts.options.map((n) => ({ value: String(n), label: `${n}${unit}` })),
+      { value: "__custom__", label: "自定义输入…" },
+    ],
+    initialValue: String(opts.initialValue),
+  });
+  if (choice !== "__custom__") {
+    return Number(choice);
+  }
+  return number({
+    message: `输入数字${unit ? `（${unit}）` : ""}`,
+    initialValue: opts.initialValue,
+    min: opts.min,
+    max: opts.max,
+  });
+}

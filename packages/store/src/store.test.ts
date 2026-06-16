@@ -331,6 +331,49 @@ test("上下文装配：伏笔指令、状态链与预算裁剪", () => {
   store.close();
 });
 
+test("删除小说：级联清空全部数据", () => {
+  const store = memoryStore();
+  const novel = store.novels.create({ title: "待删之书" });
+  const other = store.novels.create({ title: "保留之书" });
+  const id = novel.id;
+
+  store.assets.saveVersion(id, "foundation", FOUNDATION);
+  store.outlines.saveVersion({ novelId: id, scope: "main", content: { premise: "x" } });
+  const chapter = store.chapters.ensure(id, 1, 1);
+  const draft = store.chapters.addDraft(chapter.id, { content: "正文", source: "write" });
+  store.chapters.setConfirmedDraft(chapter.id, draft.id);
+  store.memory.applyChapterMemory(id, 1, {
+    summary: "摘要",
+    characterStates: [{ name: "林尘", changeNote: "变化" }],
+    foreshadowEvents: [],
+    newForeshadows: [
+      { title: "玉佩", description: "d", importance: "core", expectedResolveFrom: 5 },
+    ],
+    canonFacts: [{ category: "character", subject: "林尘", fact: "事实" }],
+  });
+  const run = store.runs.createRun(id, "writeChapter", {});
+  store.runs.upsertStep({ runId: run.id, stepId: "s", seq: 1, status: "completed" });
+  // 保留之书也放点数据，确认不被误删
+  store.assets.saveVersion(other.id, "foundation", FOUNDATION);
+
+  store.novels.delete(id);
+
+  assert.equal(store.novels.get(id), undefined);
+  assert.equal(store.novels.list().length, 1);
+  assert.equal(store.assets.getActive(id, "foundation"), undefined);
+  assert.equal(store.outlines.getActiveMain(id), undefined);
+  assert.equal(store.chapters.list(id).length, 0);
+  assert.equal(store.characters.list(id).length, 0);
+  assert.equal(store.foreshadows.list(id).length, 0);
+  assert.equal(store.canon.list(id).length, 0);
+  assert.equal(store.summaries.get(id, "chapter", 1), undefined);
+  assert.equal(store.runs.findInterruptedRun(id), undefined);
+  // 另一本书完好
+  assert.ok(store.assets.getActive(other.id, "foundation"));
+
+  store.close();
+});
+
 test("schema 版本不匹配时给出中文错误", () => {
   const store = openStore(":memory:");
   store.close();

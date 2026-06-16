@@ -1,12 +1,13 @@
 import { selectBestDraft, writeChapterWorkflow } from "@ai-novel-agents/workflow";
 
-import { select, text } from "../clack.js";
+import { text } from "../clack.js";
 import type { AppContext } from "../context.js";
 import { formatReview } from "../display.js";
 import { runWf } from "../runner.js";
 import { section } from "../render/section.js";
+import { chapterWorkspace } from "./chapterWorkspace.js";
 
-/** 写作下一章：确认章号与意图 → 流式生成 → 展示评审 → 就地决定确认/修改 */
+/** 写作下一章：确认意图 → 流式生成 → 展示评审 → 进入章节工作台 */
 export async function writeChapterWizard(
   ctx: AppContext,
   suggestedChapterNo: number,
@@ -39,21 +40,6 @@ export async function writeChapterWizard(
     section(`第 ${suggestedChapterNo} 章草稿评审`, formatReview(best.review));
   }
 
-  const next = await select<"confirm" | "revise" | "later">({
-    message: "这一章接下来？",
-    options: [
-      { value: "confirm", label: "确认这一章", hint: "写入记忆台账" },
-      { value: "revise", label: "修改这一章", hint: "AI 修订 / 润色 / 手工编辑" },
-      { value: "later", label: "稍后再说", hint: "返回工作台" },
-    ],
-    initialValue: best.review?.consistency?.pass === false ? "revise" : "confirm",
-  });
-
-  if (next === "confirm") {
-    const { confirmChapterWizard } = await import("./confirmChapter.js");
-    await confirmChapterWizard(ctx, suggestedChapterNo);
-  } else if (next === "revise") {
-    const { reviseChapterWizard } = await import("./revise.js");
-    await reviseChapterWizard(ctx, suggestedChapterNo);
-  }
+  // 落在章节工作台：可继续查看 / 修改 / 确认
+  await chapterWorkspace(ctx, suggestedChapterNo);
 }

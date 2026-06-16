@@ -5,7 +5,7 @@ import {
 } from "@ai-novel-agents/workflow";
 import type { Foundation, Setting } from "@ai-novel-agents/store";
 
-import { number, p, text } from "../clack.js";
+import { chooseNumber, p, text } from "../clack.js";
 import type { AppContext } from "../context.js";
 import {
   formatFoundation,
@@ -55,16 +55,25 @@ export async function generateSettingWizard(ctx: AppContext): Promise<void> {
 export async function generateMainOutlineWizard(ctx: AppContext): Promise<void> {
   p.log.message(
     color.dim(
-      "总纲是粗粒度的卷级规划，整书章数 ≈ 卷数 × 每卷章节数（如 12×40≈480、25×60≈1500）。\n" +
+      "总纲是粗粒度的卷级规划，整书章数 ≈ 卷数 × 每卷章节数（如 8×300≈2400、5×200≈1000）。\n" +
         "卷纲会在写作时再把每卷细化到逐章；每章约 2500 字。",
     ),
   );
-  const volumeCount = await number({ message: "计划写多少卷？", initialValue: 12, min: 1, max: 60 });
-  const chaptersPerVolume = await number({
-    message: "每卷平均多少章？",
-    initialValue: 40,
-    min: 10,
-    max: 200,
+  const volumeCount = await chooseNumber({
+    message: "计划写多少卷？",
+    options: [5, 8, 12],
+    initialValue: 8,
+    min: 1,
+    max: 30,
+    unit: " 卷",
+  });
+  const chaptersPerVolume = await chooseNumber({
+    message: "每卷大约多少章？",
+    options: [200, 300, 400],
+    initialValue: 300,
+    min: 20,
+    max: 1000,
+    unit: " 章",
   });
 
   const result = await runWf(ctx, generateOutlineWorkflow, {
@@ -84,11 +93,17 @@ export async function generateMainOutlineWizard(ctx: AppContext): Promise<void> 
 }
 
 export async function generateVolumeOutlineWizard(ctx: AppContext, volumeNo: number): Promise<void> {
-  p.log.message(color.dim(`即将生成第 ${volumeNo} 卷的卷纲（章节节拍与伏笔安排）`));
+  const authorNotes = (
+    await text({
+      message: `第 ${volumeNo} 卷你想怎么写？（可留空，由 AI 按总纲推进）`,
+      placeholder: "例：本卷主打势力对抗，卷末让主角痛失一位队友",
+    })
+  ).trim();
   const result = await runWf(ctx, generateOutlineWorkflow, {
     novelId: ctx.currentNovelId,
     scope: "volume",
     volumeNo,
+    authorNotes: authorNotes || undefined,
   });
   if (result.status === "completed") {
     const volume = ctx.store.outlines.getActiveVolume(ctx.currentNovelId, volumeNo);

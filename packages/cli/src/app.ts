@@ -8,14 +8,14 @@ import { runWf } from "./runner.js";
 import { gatherStatus, type NovelStatus } from "./status.js";
 import { color, formatTokens } from "./util.js";
 import { createNovel } from "./wizards/createNovel.js";
-import { confirmChapterWizard } from "./wizards/confirmChapter.js";
 import {
   generateFoundationWizard,
   generateMainOutlineWizard,
   generateSettingWizard,
   generateVolumeOutlineWizard,
 } from "./wizards/generate.js";
-import { reviseAssetWizard, reviseChapterWizard, reviseOutlineWizard } from "./wizards/revise.js";
+import { chapterWorkspace, pickChapterAndOpen } from "./wizards/chapterWorkspace.js";
+import { reviseAssetWizard, reviseOutlineWizard } from "./wizards/revise.js";
 import { writeChapterWizard } from "./wizards/writeChapter.js";
 
 export async function runApp(ctx: AppContext): Promise<void> {
@@ -25,11 +25,8 @@ export async function runApp(ctx: AppContext): Promise<void> {
     const novelId = await pickNovel(ctx);
     if (!novelId) break;
     ctx.currentNovelId = novelId;
-    try {
-      await dashboardLoop(ctx);
-    } catch (error) {
-      if (!(error instanceof CancelError)) throw error;
-    }
+    const quit = await dashboardLoop(ctx);
+    if (quit) break;
   }
 
   p.outro(color.dim("再见，祝码字顺利。"));
@@ -38,30 +35,60 @@ export async function runApp(ctx: AppContext): Promise<void> {
 // ---------- 选择 / 新建小说 ----------
 
 async function pickNovel(ctx: AppContext): Promise<string | undefined> {
-  const novels = ctx.store.novels.list();
-  const choice = await select<string>({
-    message: "选择小说",
-    options: [
-      ...novels.map((n) => ({
-        value: n.id,
-        label: `《${n.title}》`,
-        hint: novelHint(ctx, n.id),
-      })),
-      { value: "__new__", label: color.cyan("＋ 新建小说") },
-      { value: "__quit__", label: "退出" },
-    ],
-  }).catch((error) => {
-    if (error instanceof CancelError) return "__quit__";
-    throw error;
-  });
+  for (;;) {
+    const novels = ctx.store.novels.list();
+    const choice = await select<string>({
+      message: "选择小说",
+      options: [
+        ...novels.map((n) => ({
+          value: n.id,
+          label: `《${n.title}》`,
+          hint: novelHint(ctx, n.id),
+        })),
+        { value: "__new__", label: color.cyan("＋ 新建小说") },
+        ...(novels.length > 0 ? [{ value: "__delete__", label: color.red("删除小说") }] : []),
+        { value: "__quit__", label: "退出" },
+      ],
+    }).catch((error) => {
+      if (error instanceof CancelError) return "__quit__";
+      throw error;
+    });
 
-  if (choice === "__quit__") return undefined;
-  if (choice === "__new__") {
-    const id = createNovel(ctx);
-    p.log.success("已创建空白小说，先从生成基础盘开始。");
-    return id;
+    if (choice === "__quit__") return undefined;
+    if (choice === "__new__") {
+      const id = createNovel(ctx);
+      p.log.success("已创建空白小说，先从生成基础盘开始。");
+      return id;
+    }
+    if (choice === "__delete__") {
+      await deleteNovelFlow(ctx);
+      continue;
+    }
+    return choice;
   }
-  return choice;
+}
+
+async function deleteNovelFlow(ctx: AppContext): Promise<void> {
+  const novels = ctx.store.novels.list();
+  let id: string;
+  try {
+    id = await select<string>({
+      message: color.red("删除哪本小说？（不可恢复）"),
+      options: [
+        ...novels.map((n) => ({ value: n.id, label: `《${n.title}》`, hint: novelHint(ctx, n.id) })),
+        { value: "__back__", label: "返回" },
+      ],
+    });
+  } catch (error) {
+    if (error instanceof CancelError) return;
+    throw error;
+  }
+  if (id === "__back__") return;
+  const novel = ctx.store.novels.get(id);
+  if (novel && (await confirm(`确认永久删除《${novel.title}》及其全部章节与记忆？`, false))) {
+    ctx.store.novels.delete(id);
+    p.log.success(`已删除《${novel.title}》`);
+  }
 }
 
 function novelHint(ctx: AppContext, novelId: string): string {
@@ -73,31 +100,54 @@ function novelHint(ctx: AppContext, novelId: string): string {
 
 // ---------- 仪表盘主循环 ----------
 
-async function dashboardLoop(ctx: AppContext): Promise<void> {
+/** 返回 = 回到选择小说；返回 true 表示要退出整个程序 */
+async function dashboardLoop(ctx: AppContext): Promise<boolean> {
   for (;;) {
     const status = gatherStatus(ctx.store, ctx.currentNovelId);
     printStatus(status);
     const suggestion = suggestNextStep(ctx.store, status);
 
-    const action = await select<string>({
-      message: "下一步",
-      options: buildMenu(status, suggestion),
-      initialValue: "__suggested__",
-    });
+    let action: string;
+    try {
+      action = await select<string>({
+        message: "下一步",
+        options: buildMenu(status, suggestion),
+        initialValue: "__suggested__",
+      });
+    } catch (error) {
+      if (error instanceof CancelError) return false; // Esc → 回到选择小说
+      throw error;
+    }
 
-    if (action === "__quit__") return;
-    if (action === "__switch__") return;
+    if (action === "__quit__") return true;
+    if (action === "__switch__") return false;
+    if (action === "__delete__") {
+      const deleted = await deleteCurrentNovel(ctx);
+      if (deleted) return false;
+      continue;
+    }
 
     try {
       await dispatch(ctx, action === "__suggested__" ? suggestion.action : action, suggestion, status);
     } catch (error) {
       if (error instanceof CancelError) {
-        p.log.message(color.dim("已取消，返回工作台。"));
+        p.log.message(color.dim("已取消。"));
       } else {
         throw error;
       }
     }
   }
+}
+
+async function deleteCurrentNovel(ctx: AppContext): Promise<boolean> {
+  const novel = ctx.store.novels.get(ctx.currentNovelId);
+  if (!novel) return true;
+  if (await confirm(color.red(`确认永久删除《${novel.title}》及其全部章节与记忆？`), false)) {
+    ctx.store.novels.delete(ctx.currentNovelId);
+    p.log.success(`已删除《${novel.title}》`);
+    return true;
+  }
+  return false;
 }
 
 function printStatus(status: NovelStatus): void {
@@ -142,7 +192,8 @@ function buildMenu(
     options.push({ value: "reviseChapter", label: "修改章节" });
   }
   options.push({ value: "library", label: "资料库", hint: "伏笔 / 人物 / canon / 版本" });
-  options.push({ value: "__switch__", label: "切换 / 新建小说" });
+  options.push({ value: "__delete__", label: color.red("删除本书") });
+  options.push({ value: "__switch__", label: "返回（选择其他小说）" });
   options.push({ value: "__quit__", label: "退出" });
   return options;
 }
@@ -175,7 +226,7 @@ async function dispatch(
       await writeChapterWizard(ctx, suggestion.chapterNo ?? status.nextChapterNo);
       return;
     case "confirm":
-      await confirmChapterWizard(
+      await chapterWorkspace(
         ctx,
         suggestion.chapterNo ?? Math.min(...status.reviewedChapterNos),
       );
@@ -187,7 +238,7 @@ async function dispatch(
       await reviseOutlineWizard(ctx);
       return;
     case "reviseChapter":
-      await reviseChapterWizard(ctx);
+      await pickChapterAndOpen(ctx);
       return;
     case "library":
       await libraryPanel(ctx);

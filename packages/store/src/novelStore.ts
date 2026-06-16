@@ -21,6 +21,8 @@ export interface NovelStore {
     id: string,
     patch: Partial<Pick<Novel, "title" | "genre" | "brief" | "status">>,
   ): Novel;
+  /** 级联删除整本小说的全部数据 */
+  delete(id: string): void;
 }
 
 export function createNovelStore(db: Database): NovelStore {
@@ -87,6 +89,40 @@ export function createNovelStore(db: Database): NovelStore {
          WHERE id = ?`,
       ).run(next.title, next.genre ?? null, next.brief ?? null, next.status, next.updatedAt, id);
       return next;
+    },
+
+    delete(id) {
+      const run = db.transaction(() => {
+        // 先删通过外键挂在子实体上的孙表
+        db.prepare(
+          "DELETE FROM chapter_drafts WHERE chapter_id IN (SELECT id FROM chapters WHERE novel_id = ?)",
+        ).run(id);
+        db.prepare(
+          "DELETE FROM character_states WHERE character_id IN (SELECT id FROM characters WHERE novel_id = ?)",
+        ).run(id);
+        db.prepare(
+          "DELETE FROM foreshadow_events WHERE foreshadow_id IN (SELECT id FROM foreshadows WHERE novel_id = ?)",
+        ).run(id);
+        db.prepare(
+          "DELETE FROM workflow_steps WHERE run_id IN (SELECT id FROM workflow_runs WHERE novel_id = ?)",
+        ).run(id);
+        // 再删直接挂 novel_id 的表
+        for (const table of [
+          "chapters",
+          "characters",
+          "foreshadows",
+          "workflow_runs",
+          "novel_assets",
+          "outlines",
+          "summaries",
+          "canon_facts",
+          "agent_runs",
+        ]) {
+          db.prepare(`DELETE FROM ${table} WHERE novel_id = ?`).run(id);
+        }
+        db.prepare("DELETE FROM novels WHERE id = ?").run(id);
+      });
+      run();
     },
   };
 }

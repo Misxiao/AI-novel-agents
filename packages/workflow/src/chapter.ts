@@ -231,6 +231,8 @@ export interface ReviseChapterInput {
   mode: "revise" | "polish";
   /** revise 模式的修订指令（整章修订/重写场景/扩写/压缩都通过指令表达） */
   instruction?: string;
+  /** 额外修订指令，通常是上一轮评审/一致性意见（由调用方决定是否带入） */
+  extraDirectives?: string[];
   styleGoal?: string;
 }
 
@@ -245,16 +247,15 @@ export const reviseChapterWorkflow: WorkflowDefinition<ReviseChapterInput> = {
       title: "重写正文",
       retries: 1,
       async run(ctx) {
-        const { novelId, chapterNo, mode, instruction, styleGoal } = ctx.input;
+        const { novelId, chapterNo, mode, instruction, extraDirectives, styleGoal } = ctx.input;
         const chapter = ctx.store.chapters.get(novelId, chapterNo);
         if (!chapter?.plan) {
           throw new Error(`第 ${chapterNo} 章尚无章纲，无法修改`);
         }
-        const source = ctx.store.chapters.latestDraft(chapter.id);
-        if (!source) {
-          throw new Error(`第 ${chapterNo} 章尚无草稿，请先写作`);
-        }
+        // 改用用户实际看到的最佳稿作为修订源
+        const source = selectBestDraft(ctx.store.chapters, chapter.id);
         const bundle = ctx.store.assembleChapterContext(novelId, chapterNo);
+        const directives = [...(extraDirectives ?? []), ...(instruction ? [instruction] : [])];
         const { content } =
           mode === "polish"
             ? await writer.polishChapter.run(
@@ -266,7 +267,7 @@ export const reviseChapterWorkflow: WorkflowDefinition<ReviseChapterInput> = {
                   context: bundle,
                   plan: chapter.plan,
                   draft: source.content,
-                  directives: [instruction ?? "整体提升质量"],
+                  directives: directives.length > 0 ? directives : ["整体提升质量"],
                 },
                 ctx.agents,
               );

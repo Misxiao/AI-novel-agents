@@ -102,15 +102,19 @@ async function chapterTextPanel(store: Store, novelId: string): Promise<void> {
   }
   const chapterNo = await select<number>({
     message: "查看哪一章？",
-    options: chapters
-      .slice()
-      .reverse()
-      .map((c) => ({
-        value: c.chapterNo,
-        label: `第 ${c.chapterNo} 章 ${c.title ?? ""}`,
-        hint: c.status === "confirmed" ? "已确认" : "待确认",
-      })),
+    options: [
+      ...chapters
+        .slice()
+        .reverse()
+        .map((c) => ({
+          value: c.chapterNo,
+          label: `第 ${c.chapterNo} 章 ${c.title ?? ""}`,
+          hint: c.status === "confirmed" ? "已确认" : "待确认",
+        })),
+      { value: 0, label: "返回" },
+    ],
   });
+  if (chapterNo === 0) return;
   const chapter = store.chapters.get(novelId, chapterNo)!;
   const draft = chapter.confirmedDraftId
     ? store.chapters.getDraft(chapter.confirmedDraftId)
@@ -169,12 +173,16 @@ async function characterPanel(store: Store, novelId: string): Promise<void> {
   }
   const id = await select<string>({
     message: "查看哪个角色的状态链？",
-    options: characters.map((c) => ({
-      value: c.id,
-      label: c.name,
-      hint: c.role === "protagonist" ? "主角" : c.role === "major" ? "主要" : "次要",
-    })),
+    options: [
+      ...characters.map((c) => ({
+        value: c.id,
+        label: c.name,
+        hint: c.role === "protagonist" ? "主角" : c.role === "major" ? "主要" : "次要",
+      })),
+      { value: "__back__", label: "返回" },
+    ],
   });
+  if (id === "__back__") return;
   const character = store.characters.get(id)!;
   const states = store.characters.recentStates(id, Number.MAX_SAFE_INTEGER, 50);
   const lines = states.map((s) => {
@@ -233,14 +241,16 @@ async function canonPanel(ctx: AppContext): Promise<void> {
 }
 
 async function versionPanel(store: Store, novelId: string): Promise<void> {
-  const kind = await select<"foundation" | "setting" | "outline">({
+  const kind = await select<"foundation" | "setting" | "outline" | "back">({
     message: "查看哪类资产的版本？",
     options: [
       { value: "foundation", label: "基础盘" },
       { value: "setting", label: "设定" },
       { value: "outline", label: "大纲" },
+      { value: "back", label: "返回" },
     ],
   });
+  if (kind === "back") return;
 
   if (kind === "outline") {
     const versions = store.outlines.listVersions(novelId, "main");

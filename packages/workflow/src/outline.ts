@@ -14,7 +14,7 @@ import { volumeChapterRanges } from "./helpers.js";
 
 export type GenerateOutlineInput =
   | { novelId: string; scope: "main"; volumeCount: number; chaptersPerVolume?: number }
-  | { novelId: string; scope: "volume"; volumeNo: number };
+  | { novelId: string; scope: "volume"; volumeNo: number; authorNotes?: string };
 
 export const generateOutlineWorkflow: WorkflowDefinition<GenerateOutlineInput> = {
   id: "generateOutline",
@@ -41,7 +41,14 @@ export const generateOutlineWorkflow: WorkflowDefinition<GenerateOutlineInput> =
             ctx.agents,
           );
         }
-        return generateVolume(ctx.store, ctx.agents, ctx.input.novelId, foundation, ctx.input.volumeNo);
+        return generateVolume(
+          ctx.store,
+          ctx.agents,
+          ctx.input.novelId,
+          foundation,
+          ctx.input.volumeNo,
+          ctx.input.authorNotes,
+        );
       },
     },
     {
@@ -88,6 +95,7 @@ async function generateVolume(
   novelId: string,
   foundation: Foundation,
   volumeNo: number,
+  authorNotes?: string,
 ): Promise<VolumeOutline> {
   const main = store.outlines.getActiveMain(novelId);
   if (!main) {
@@ -105,6 +113,7 @@ async function generateVolume(
       startChapterNo,
       previousVolumeSummary,
       openForeshadows: store.foreshadows.listOpen(novelId),
+      authorNotes,
     },
     agents,
   );
