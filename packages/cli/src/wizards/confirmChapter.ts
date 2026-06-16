@@ -8,6 +8,7 @@ import { confirm, p } from "../clack.js";
 import type { AppContext } from "../context.js";
 import { formatConsistency, formatMemory, previewDraft } from "../display.js";
 import { runWf } from "../runner.js";
+import { section } from "../render/section.js";
 import { color } from "../util.js";
 
 /** 确认章节：展示待确认稿 → 一致性门禁 → 提取记忆落库 */
@@ -20,7 +21,7 @@ export async function confirmChapterWizard(ctx: AppContext, chapterNo: number): 
   }
 
   const draft = selectBestDraft(ctx.store.chapters, chapter.id);
-  p.note(previewDraft(draft), `第 ${chapterNo} 章 · 待确认稿`);
+  section(`第 ${chapterNo} 章 · 待确认稿`, previewDraft(draft));
   if (draft.review?.consistency) {
     p.log.message(formatConsistency(draft.review.consistency));
   }
@@ -52,7 +53,7 @@ export async function confirmChapterWizard(ctx: AppContext, chapterNo: number): 
 
   const memory = result.outputs["extract"] as Parameters<typeof formatMemory>[0] | undefined;
   if (memory) {
-    p.note(formatMemory(memory), `第 ${chapterNo} 章 · 已写入记忆`);
+    section(`第 ${chapterNo} 章 · 已写入记忆`, formatMemory(memory));
   }
   const rollup = result.outputs["rollup"] as { actions: string[] } | undefined;
   if (rollup && rollup.actions.length > 0) {

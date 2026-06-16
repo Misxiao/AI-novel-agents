@@ -33,3 +33,28 @@ export async function select<T>(opts: {
 export async function confirm(message: string, initialValue = true): Promise<boolean> {
   return unwrap(await p.confirm({ message, initialValue }));
 }
+
+export async function number(opts: {
+  message: string;
+  initialValue?: number;
+  min?: number;
+  max?: number;
+}): Promise<number> {
+  const fallback = opts.initialValue;
+  const raw = await text({
+    message: opts.message,
+    placeholder: fallback != null ? String(fallback) : undefined,
+    defaultValue: fallback != null ? String(fallback) : undefined,
+    validate: (value) => {
+      const s = value.trim();
+      if (!s) return fallback != null ? undefined : "请输入数字";
+      const n = Number(s);
+      if (!Number.isInteger(n)) return "请输入整数";
+      if (opts.min != null && n < opts.min) return `不能小于 ${opts.min}`;
+      if (opts.max != null && n > opts.max) return `不能大于 ${opts.max}`;
+      return undefined;
+    },
+  });
+  const n = Number(raw.trim());
+  return raw.trim() && Number.isFinite(n) ? n : (fallback ?? 0);
+}

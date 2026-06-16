@@ -3,10 +3,18 @@ import {
   generateOutlineWorkflow,
   generateSettingWorkflow,
 } from "@ai-novel-agents/workflow";
+import type { Foundation, Setting } from "@ai-novel-agents/store";
 
-import { p, select, text } from "../clack.js";
+import { number, p, text } from "../clack.js";
 import type { AppContext } from "../context.js";
+import {
+  formatFoundation,
+  formatMainOutline,
+  formatSetting,
+  formatVolumeOutline,
+} from "../display.js";
 import { runWf } from "../runner.js";
+import { section } from "../render/section.js";
 import { color } from "../util.js";
 
 export async function generateFoundationWizard(ctx: AppContext): Promise<void> {
@@ -25,11 +33,8 @@ export async function generateFoundationWizard(ctx: AppContext): Promise<void> {
     genrePreference: genrePreference || undefined,
   });
   if (result.status === "completed") {
-    const novel = ctx.store.novels.get(ctx.currentNovelId)!;
-    p.note(
-      [`书名：${novel.title}`, `题材：${novel.genre ?? ""}`, `定位：${novel.brief ?? ""}`].join("\n"),
-      "基础盘已生成",
-    );
+    const foundation = ctx.store.assets.getActive<Foundation>(ctx.currentNovelId, "foundation");
+    if (foundation) section("基础盘已生成", formatFoundation(foundation.content));
   }
 }
 
@@ -37,44 +42,56 @@ export async function generateSettingWizard(ctx: AppContext): Promise<void> {
   const extraNotes = (
     await text({ message: "对世界观/角色有什么特别要求？（可留空）", placeholder: "例：力量体系要硬核，女主要强势" })
   ).trim();
-  await runWf(ctx, generateSettingWorkflow, {
+  const result = await runWf(ctx, generateSettingWorkflow, {
     novelId: ctx.currentNovelId,
     extraNotes: extraNotes || undefined,
   });
+  if (result.status === "completed") {
+    const setting = ctx.store.assets.getActive<Setting>(ctx.currentNovelId, "setting");
+    if (setting) section("设定已生成", formatSetting(setting.content));
+  }
 }
 
 export async function generateMainOutlineWizard(ctx: AppContext): Promise<void> {
-  const volumeCount = await select<number>({
-    message: "计划写多少卷？",
-    options: [
-      { value: 3, label: "3 卷（短篇试水）" },
-      { value: 6, label: "6 卷（中长篇）" },
-      { value: 10, label: "10 卷（长篇连载）" },
-    ],
-    initialValue: 6,
+  p.log.message(
+    color.dim(
+      "总纲是粗粒度的卷级规划，整书章数 ≈ 卷数 × 每卷章节数（如 12×40≈480、25×60≈1500）。\n" +
+        "卷纲会在写作时再把每卷细化到逐章；每章约 2500 字。",
+    ),
+  );
+  const volumeCount = await number({ message: "计划写多少卷？", initialValue: 12, min: 1, max: 60 });
+  const chaptersPerVolume = await number({
+    message: "每卷平均多少章？",
+    initialValue: 40,
+    min: 10,
+    max: 200,
   });
-  const chaptersPerVolume = await select<number>({
-    message: "每卷大约多少章？",
-    options: [
-      { value: 20, label: "20 章" },
-      { value: 30, label: "30 章" },
-      { value: 50, label: "50 章" },
-    ],
-    initialValue: 30,
-  });
-  await runWf(ctx, generateOutlineWorkflow, {
+
+  const result = await runWf(ctx, generateOutlineWorkflow, {
     novelId: ctx.currentNovelId,
     scope: "main",
     volumeCount,
     chaptersPerVolume,
   });
+  if (result.status === "completed") {
+    const main = ctx.store.outlines.getActiveMain(ctx.currentNovelId);
+    if (main) {
+      section("总纲已生成", formatMainOutline(main.content));
+      const total = main.content.volumes.reduce((sum, v) => sum + v.estimatedChapters, 0);
+      p.log.message(color.dim(`预计全书约 ${total} 章、${(total * 2500 / 10000).toFixed(0)} 万字。`));
+    }
+  }
 }
 
 export async function generateVolumeOutlineWizard(ctx: AppContext, volumeNo: number): Promise<void> {
   p.log.message(color.dim(`即将生成第 ${volumeNo} 卷的卷纲（章节节拍与伏笔安排）`));
-  await runWf(ctx, generateOutlineWorkflow, {
+  const result = await runWf(ctx, generateOutlineWorkflow, {
     novelId: ctx.currentNovelId,
     scope: "volume",
     volumeNo,
   });
+  if (result.status === "completed") {
+    const volume = ctx.store.outlines.getActiveVolume(ctx.currentNovelId, volumeNo);
+    if (volume) section(`第 ${volumeNo} 卷卷纲已生成`, formatVolumeOutline(volume.content));
+  }
 }

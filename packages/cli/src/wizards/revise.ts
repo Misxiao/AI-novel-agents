@@ -8,9 +8,10 @@ import type { Foundation, Setting } from "@ai-novel-agents/store";
 
 import { confirm, p, select, text } from "../clack.js";
 import type { AppContext } from "../context.js";
-import { formatReview, previewDraft } from "../display.js";
+import { formatReview } from "../display.js";
 import { editInEditor } from "../editor.js";
 import { runWf } from "../runner.js";
+import { section } from "../render/section.js";
 import { color } from "../util.js";
 
 // ---------- 修改基础盘 / 设定 ----------
@@ -107,27 +108,35 @@ export async function reviseOutlineWizard(ctx: AppContext): Promise<void> {
 
 // ---------- 修改章节 ----------
 
-export async function reviseChapterWizard(ctx: AppContext): Promise<void> {
+export async function reviseChapterWizard(
+  ctx: AppContext,
+  presetChapterNo?: number,
+): Promise<void> {
   const novelId = ctx.currentNovelId;
-  const chapters = ctx.store.chapters
-    .list(novelId)
-    .filter((c) => c.status === "reviewed" || c.status === "confirmed");
-  if (chapters.length === 0) {
-    p.log.warn("还没有可修改的章节");
-    return;
-  }
 
-  const chapterNo = await select<number>({
-    message: "改哪一章？",
-    options: chapters
-      .slice()
-      .reverse()
-      .map((c) => ({
-        value: c.chapterNo,
-        label: `第 ${c.chapterNo} 章 ${c.title ?? ""}`,
-        hint: c.status === "confirmed" ? "已确认" : "待确认",
-      })),
-  });
+  let chapterNo: number;
+  if (presetChapterNo != null) {
+    chapterNo = presetChapterNo;
+  } else {
+    const chapters = ctx.store.chapters
+      .list(novelId)
+      .filter((c) => c.status === "reviewed" || c.status === "confirmed");
+    if (chapters.length === 0) {
+      p.log.warn("还没有可修改的章节");
+      return;
+    }
+    chapterNo = await select<number>({
+      message: "改哪一章？",
+      options: chapters
+        .slice()
+        .reverse()
+        .map((c) => ({
+          value: c.chapterNo,
+          label: `第 ${c.chapterNo} 章 ${c.title ?? ""}`,
+          hint: c.status === "confirmed" ? "已确认" : "待确认",
+        })),
+    });
+  }
   const chapter = ctx.store.chapters.get(novelId, chapterNo)!;
 
   const mode = await select<"revise" | "scene" | "expand" | "compress" | "polish" | "manual">({
@@ -174,7 +183,7 @@ export async function reviseChapterWizard(ctx: AppContext): Promise<void> {
 
   const best = selectBestDraft(ctx.store.chapters, chapter.id);
   if (best.review) {
-    p.note(formatReview(best.review), `第 ${chapterNo} 章 · 修改后评审`);
+    section(`第 ${chapterNo} 章 · 修改后评审`, formatReview(best.review));
   }
   if (chapter.status === "confirmed") {
     p.log.warn(color.yellow("该章原已确认，修改后需重新确认才会更新记忆台账。"));

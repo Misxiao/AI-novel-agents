@@ -1,11 +1,12 @@
 import { selectBestDraft, writeChapterWorkflow } from "@ai-novel-agents/workflow";
 
-import { confirm, p, text } from "../clack.js";
+import { select, text } from "../clack.js";
 import type { AppContext } from "../context.js";
 import { formatReview } from "../display.js";
 import { runWf } from "../runner.js";
+import { section } from "../render/section.js";
 
-/** 写作下一章：确认章号与意图 → 流式生成 → 展示评审 */
+/** 写作下一章：确认章号与意图 → 流式生成 → 展示评审 → 就地决定确认/修改 */
 export async function writeChapterWizard(
   ctx: AppContext,
   suggestedChapterNo: number,
@@ -13,7 +14,7 @@ export async function writeChapterWizard(
   const novelId = ctx.currentNovelId;
   const due = ctx.store.foreshadows.listDue(novelId, suggestedChapterNo);
   if (due.length > 0) {
-    p.note(due.map((f) => `· ${f.title}（${f.importance}）`).join("\n"), "本章可回收的伏笔");
+    section("本章可回收的伏笔", due.map((f) => `· ${f.title}（${f.importance}）`).join("\n"));
   }
 
   const authorIntent = (
@@ -35,11 +36,24 @@ export async function writeChapterWizard(
   const chapter = ctx.store.chapters.get(novelId, suggestedChapterNo)!;
   const best = selectBestDraft(ctx.store.chapters, chapter.id);
   if (best.review) {
-    p.note(formatReview(best.review), `第 ${suggestedChapterNo} 章草稿评审`);
+    section(`第 ${suggestedChapterNo} 章草稿评审`, formatReview(best.review));
   }
 
-  if (await confirm("现在确认这一章吗？", best.review?.consistency?.pass ?? true)) {
+  const next = await select<"confirm" | "revise" | "later">({
+    message: "这一章接下来？",
+    options: [
+      { value: "confirm", label: "确认这一章", hint: "写入记忆台账" },
+      { value: "revise", label: "修改这一章", hint: "AI 修订 / 润色 / 手工编辑" },
+      { value: "later", label: "稍后再说", hint: "返回工作台" },
+    ],
+    initialValue: best.review?.consistency?.pass === false ? "revise" : "confirm",
+  });
+
+  if (next === "confirm") {
     const { confirmChapterWizard } = await import("./confirmChapter.js");
     await confirmChapterWizard(ctx, suggestedChapterNo);
+  } else if (next === "revise") {
+    const { reviseChapterWizard } = await import("./revise.js");
+    await reviseChapterWizard(ctx, suggestedChapterNo);
   }
 }
