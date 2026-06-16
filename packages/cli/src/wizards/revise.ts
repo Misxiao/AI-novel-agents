@@ -17,20 +17,25 @@ import { color } from "../util.js";
 // ---------- 修改基础盘 / 设定 ----------
 
 export async function reviseAssetWizard(ctx: AppContext): Promise<void> {
-  const kind = await select<"foundation" | "setting">({
+  const kind = await select<"foundation" | "setting" | "back">({
     message: "修改哪个资产？",
     options: [
       { value: "foundation", label: "基础盘", hint: "定位/卖点/主角" },
       { value: "setting", label: "设定", hint: "世界观/角色/文风" },
+      { value: "back", label: "返回" },
     ],
   });
-  const useEditor = await select<"ai" | "manual">({
+  if (kind === "back") return;
+
+  const useEditor = await select<"ai" | "manual" | "back">({
     message: "怎么改？",
     options: [
       { value: "ai", label: "告诉 AI 怎么改" },
       { value: "manual", label: "手工编辑 JSON（$EDITOR）" },
+      { value: "back", label: "返回" },
     ],
   });
+  if (useEditor === "back") return;
 
   if (useEditor === "manual") {
     const current = ctx.store.assets.getActive<Foundation | Setting>(ctx.currentNovelId, kind);
@@ -69,13 +74,15 @@ export async function reviseAssetWizard(ctx: AppContext): Promise<void> {
 
 export async function reviseOutlineWizard(ctx: AppContext): Promise<void> {
   const volumes = ctx.store.outlines.listActiveVolumes(ctx.currentNovelId);
-  const scope = await select<"main" | "volume">({
+  const scope = await select<"main" | "volume" | "back">({
     message: "修改总纲还是卷纲？",
     options: [
       { value: "main", label: "总纲" },
       { value: "volume", label: "卷纲", hint: volumes.length === 0 ? "暂无卷纲" : `${volumes.length} 卷` },
+      { value: "back", label: "返回" },
     ],
   });
+  if (scope === "back") return;
 
   let volumeNo: number | undefined;
   if (scope === "volume") {
@@ -85,11 +92,15 @@ export async function reviseOutlineWizard(ctx: AppContext): Promise<void> {
     }
     volumeNo = await select<number>({
       message: "改哪一卷？",
-      options: volumes.map((v) => ({
-        value: v.content.volumeNo,
-        label: `第 ${v.content.volumeNo} 卷 ${v.content.title}`,
-      })),
+      options: [
+        ...volumes.map((v) => ({
+          value: v.content.volumeNo,
+          label: `第 ${v.content.volumeNo} 卷 ${v.content.title}`,
+        })),
+        { value: 0, label: "返回" },
+      ],
     });
+    if (volumeNo === 0) return;
   }
 
   const instruction = await text({
@@ -127,19 +138,25 @@ export async function reviseChapterWizard(
     }
     chapterNo = await select<number>({
       message: "改哪一章？",
-      options: chapters
-        .slice()
-        .reverse()
-        .map((c) => ({
-          value: c.chapterNo,
-          label: `第 ${c.chapterNo} 章 ${c.title ?? ""}`,
-          hint: c.status === "confirmed" ? "已确认" : "待确认",
-        })),
+      options: [
+        ...chapters
+          .slice()
+          .reverse()
+          .map((c) => ({
+            value: c.chapterNo,
+            label: `第 ${c.chapterNo} 章 ${c.title ?? ""}`,
+            hint: c.status === "confirmed" ? "已确认" : "待确认",
+          })),
+        { value: 0, label: "返回" },
+      ],
     });
+    if (chapterNo === 0) return;
   }
   const chapter = ctx.store.chapters.get(novelId, chapterNo)!;
 
-  const mode = await select<"revise" | "scene" | "expand" | "compress" | "polish" | "manual">({
+  const mode = await select<
+    "revise" | "scene" | "expand" | "compress" | "polish" | "manual" | "back"
+  >({
     message: "怎么改？",
     options: [
       { value: "revise", label: "整章修订", hint: "按你的指令重写" },
@@ -148,8 +165,10 @@ export async function reviseChapterWizard(
       { value: "compress", label: "压缩", hint: "删冗余、提节奏" },
       { value: "polish", label: "润色去 AI 腔" },
       { value: "manual", label: "手工编辑正文（$EDITOR）" },
+      { value: "back", label: "返回" },
     ],
   });
+  if (mode === "back") return;
 
   if (mode === "manual") {
     const source = ctx.store.chapters.latestDraft(chapter.id);
