@@ -14,8 +14,10 @@ import {
   generateSettingWizard,
   generateVolumeOutlineWizard,
 } from "./wizards/generate.js";
+import { assetPanel } from "./panels/assetPanel.js";
+import { outlinePanel } from "./panels/outlinePanel.js";
+import { progressPanel } from "./panels/progressPanel.js";
 import { chapterWorkspace, pickChapterAndOpen } from "./wizards/chapterWorkspace.js";
-import { reviseAssetWizard, reviseOutlineWizard } from "./wizards/revise.js";
 import { writeChapterWizard } from "./wizards/writeChapter.js";
 
 export async function runApp(ctx: AppContext): Promise<void> {
@@ -179,19 +181,18 @@ function buildMenu(
     { value: "__suggested__", label: color.green(`★ ${suggestion.label}`), hint: "回车执行" },
   ];
   if (status.hasMainOutline) {
-    options.push({ value: "write", label: "写下一章" });
+    options.push({ value: "write", label: `写下一章（第 ${status.nextChapterNo} 章）` });
   }
-  if (status.reviewedChapterNos.length > 0) {
-    options.push({ value: "confirm", label: "确认待确认章" });
+  options.push({ value: "progress", label: "查看进度" });
+  // 资源：进入后查看 / 修改 / 生成 / 看历史
+  options.push({ value: "assets", label: "基础盘 / 设定" });
+  if (status.hasSetting) {
+    options.push({ value: "outline", label: "大纲" });
   }
-  if (status.hasFoundation) {
-    options.push({ value: "reviseAsset", label: "修改基础盘 / 设定" });
+  if (status.confirmedCount > 0 || status.reviewedChapterNos.length > 0) {
+    options.push({ value: "chapters", label: "章节" });
   }
-  if (status.hasMainOutline) {
-    options.push({ value: "reviseOutline", label: "修改大纲" });
-    options.push({ value: "reviseChapter", label: "修改章节" });
-  }
-  options.push({ value: "library", label: "资料库", hint: "伏笔 / 人物 / canon / 版本" });
+  options.push({ value: "library", label: "资料库", hint: "伏笔 / 人物 / canon" });
   options.push({ value: "__delete__", label: color.red("删除本书") });
   options.push({ value: "__switch__", label: "返回（选择其他小说）" });
   options.push({ value: "__quit__", label: "退出" });
@@ -231,13 +232,16 @@ async function dispatch(
         suggestion.chapterNo ?? Math.min(...status.reviewedChapterNos),
       );
       return;
-    case "reviseAsset":
-      await reviseAssetWizard(ctx);
+    case "progress":
+      progressPanel(ctx);
       return;
-    case "reviseOutline":
-      await reviseOutlineWizard(ctx);
+    case "assets":
+      await assetPanel(ctx);
       return;
-    case "reviseChapter":
+    case "outline":
+      await outlinePanel(ctx);
+      return;
+    case "chapters":
       await pickChapterAndOpen(ctx);
       return;
     case "library":

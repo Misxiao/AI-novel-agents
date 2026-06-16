@@ -84,6 +84,19 @@ export function formatVolumeOutline(outline: VolumeOutline): string {
   return lines.join("\n");
 }
 
+export function formatVersions(
+  versions: Array<{ version: number; status: string; note?: string; createdAt: string }>,
+): string {
+  if (versions.length === 0) return color.dim("暂无版本");
+  return versions
+    .map((v) => {
+      const active = v.status === "active" ? color.green("● 生效") : color.dim("○ 历史");
+      const date = v.createdAt.slice(0, 16).replace("T", " ");
+      return `${active} v${v.version} ${color.dim(date)}${v.note ? `\n   ${color.dim(v.note)}` : ""}`;
+    })
+    .join("\n");
+}
+
 function roleLabel(role: string): string {
   return role === "protagonist" ? "主角" : role === "major" ? "主要" : "次要";
 }
